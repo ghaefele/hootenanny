@@ -36,7 +36,7 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int WayString::logWarnCount = 0;
+int WayString::logWarnCount = 0;
 
 // if the difference is smaller than this we consider it to be equivalent.
 Meters WayString::_epsilon = 1e-9;
@@ -227,7 +227,7 @@ WayPtr WayString::copySimplifiedWayIntoMap(const ElementProvider& map, OsmMapPtr
     newTags =
       TagMergerFactory::getInstance().mergeTags(newTags, oldWay->getTags(), ElementType::Way);
 
-    // figure out which node is the first node, if we're between nodes, then create a new node to
+    // Figure out which node is the first node. If we're between nodes, then create a new node to
     // add.
     size_t formeri;
     vector<long> newNids;

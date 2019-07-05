@@ -22,15 +22,16 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef NETWORKVERTEX_H
 #define NETWORKVERTEX_H
 
 // hoot
 #include <hoot/core/elements/Element.h>
+
+// geos
 #include <geos/geom/Coordinate.h>
-#include <tgs/SharedPtr.h>
 
 namespace hoot
 {
@@ -45,6 +46,7 @@ namespace hoot
 class NetworkVertex
 {
 public:
+
   NetworkVertex(ConstElementPtr e);
 
   ConstElementPtr getElement() const { return _e; }
@@ -61,13 +63,14 @@ public:
   geos::geom::Coordinate getCentroid() const;
 
 private:
+
   ConstElementPtr _e;
   int _uid;
   static int uidCount;
 };
 
-typedef boost::shared_ptr<NetworkVertex> NetworkVertexPtr;
-typedef boost::shared_ptr<const NetworkVertex> ConstNetworkVertexPtr;
+typedef std::shared_ptr<NetworkVertex> NetworkVertexPtr;
+typedef std::shared_ptr<const NetworkVertex> ConstNetworkVertexPtr;
 
 inline bool operator<(const NetworkVertexPtr& v1, const NetworkVertexPtr& v2)
 {

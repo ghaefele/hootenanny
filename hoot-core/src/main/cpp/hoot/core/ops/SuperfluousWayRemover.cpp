@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include "SuperfluousWayRemover.h"
@@ -45,12 +45,12 @@ SuperfluousWayRemover::SuperfluousWayRemover()
 
 }
 
-SuperfluousWayRemover::SuperfluousWayRemover(boost::shared_ptr<OsmMap> map) :
+SuperfluousWayRemover::SuperfluousWayRemover(const std::shared_ptr<OsmMap>& map) :
 _inputMap(map)
 {
 }
 
-void SuperfluousWayRemover::removeWays(boost::shared_ptr<OsmMap> map)
+void SuperfluousWayRemover::removeWays(const std::shared_ptr<OsmMap>& map)
 {
   SuperfluousWayRemover swr(map);
   return swr.removeWays();
@@ -58,10 +58,8 @@ void SuperfluousWayRemover::removeWays(boost::shared_ptr<OsmMap> map)
 
 void SuperfluousWayRemover::removeWays()
 {
-  LOG_DEBUG("Removing superfluous ways...");
-
   _numAffected = 0;
-  boost::shared_ptr<ElementToRelationMap> e2r = _inputMap->getIndex().getElementToRelationMap();
+  std::shared_ptr<ElementToRelationMap> e2r = _inputMap->getIndex().getElementToRelationMap();
 
   // make a copy of the ways to avoid issues when removing.
   const WayMap ways = _inputMap->getWays();
@@ -100,7 +98,7 @@ void SuperfluousWayRemover::removeWays()
   }
 }
 
-void SuperfluousWayRemover::apply(boost::shared_ptr<OsmMap> &map)
+void SuperfluousWayRemover::apply(std::shared_ptr<OsmMap>& map)
 {
   removeWays(map);
 }

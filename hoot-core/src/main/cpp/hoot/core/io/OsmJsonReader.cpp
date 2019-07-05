@@ -44,6 +44,7 @@ namespace pt = boost::property_tree;
 // Qt
 #include <QTextStream>
 #include <QTextCodec>
+#include <QUrlQuery>
 
 // Standard
 #include <fstream>
@@ -56,15 +57,14 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int OsmJsonReader::logWarnCount = 0;
+int OsmJsonReader::logWarnCount = 0;
 
 HOOT_FACTORY_REGISTER(OsmMapReader, OsmJsonReader)
 
-// Default constructor
 OsmJsonReader::OsmJsonReader()
   : _defaultStatus(Status::Invalid),
     _useDataSourceIds(true),
-    _defaultCircErr(ElementData::CIRCULAR_ERROR_EMPTY),
+    _defaultCircErr(ConfigOptions().getCircularErrorDefaultValue()),
     _propTree(),
     _version(""),
     _generator(""),
@@ -78,7 +78,6 @@ OsmJsonReader::OsmJsonReader()
     _coordGridSize(ConfigOptions().getJsonReaderHttpBboxMaxSize()),
     _threadCount(ConfigOptions().getJsonReaderHttpBboxThreadCount())
 {
-  // Do nothing special
 }
 
 OsmJsonReader::~OsmJsonReader()
@@ -86,21 +85,26 @@ OsmJsonReader::~OsmJsonReader()
   close();
 }
 
-bool OsmJsonReader::isSupported(QString url)
+bool OsmJsonReader::isSupported(const QString& url)
 {
   QUrl myUrl(url);
 
-  // Is it a file?
-  if (myUrl.isLocalFile())
-  {
-    QString filename = myUrl.toLocalFile();
+  const bool isRelativeUrl = myUrl.isRelative();
+  const bool isLocalFile =  myUrl.isLocalFile();
 
+  // Is it a file?
+  if (isRelativeUrl || isLocalFile)
+  {
+    const QString filename = isRelativeUrl ? myUrl.toString() : myUrl.toLocalFile();
     if (QFile::exists(filename) && url.endsWith(".json", Qt::CaseInsensitive))
+    {
       return true;
+    }
   }
 
   // Is it a web address?
-  if ("http" == myUrl.scheme() || "https" == myUrl.scheme())
+  if (myUrl.host() == ConfigOptions().getOverpassApiHost() && ("http" == myUrl.scheme() ||
+      "https" == myUrl.scheme()))
   {
     return true;
   }
@@ -112,7 +116,7 @@ bool OsmJsonReader::isSupported(QString url)
 /**
  * Opens the specified URL for reading.
  */
-void OsmJsonReader::open(QString url)
+void OsmJsonReader::open(const QString& url)
 {
   try
   {
@@ -125,16 +129,23 @@ void OsmJsonReader::open(QString url)
 
     // Handle files or URLs
     _url = QUrl(url);
-    if (_url.isRelative() || _url.isLocalFile())
+
+    bool isRelativeUrl = _url.isRelative();
+    bool isLocalFile =  _url.isLocalFile();
+
+    if (isRelativeUrl || isLocalFile)
     {
+      QString filename = isRelativeUrl ? _url.toString() : _url.toLocalFile();
       _isFile = true;
-      _file.setFileName(_url.toLocalFile());
+      _file.setFileName(filename);
       _file.open(QFile::ReadOnly | QFile::Text);
     }
     else
     {
       _isWeb = true;
     }
+    LOG_VARD(_isFile);
+    LOG_VARD(_isWeb);
   }
   catch (const std::exception& ex)
   {
@@ -154,7 +165,7 @@ void OsmJsonReader::close()
  * Reads the specified map. When this method is complete
  * the input will likely be closed.
  */
-void OsmJsonReader::read(OsmMapPtr map)
+void OsmJsonReader::read(const OsmMapPtr& map)
 {
   _map = map;
   if (_isFile)
@@ -174,19 +185,24 @@ void OsmJsonReader::read(OsmMapPtr map)
 }
 
 // Throws HootException on error
-void OsmJsonReader::_loadJSON(QString jsonStr)
+void OsmJsonReader::_loadJSON(const QString& jsonStr)
 {
+  QString json(jsonStr);
   // Clear out anything that might be hanging around
   _propTree.clear();
 
+  LOG_TRACE("JSON before cleaning: " << jsonStr.left(100));
+
   // Handle single or double quotes
-  scrubQuotes(jsonStr);
+  scrubQuotes(json);
 
   // Handle IDs
-  scrubBigInts(jsonStr);
+  scrubBigInts(json);
+
+  LOG_TRACE("JSON after cleaning: " << jsonStr.left(100));
 
   // Convert string to stringstream
-  stringstream ss(jsonStr.toUtf8().constData(), ios::in);
+  stringstream ss(json.toUtf8().constData(), ios::in);
 
   if (!ss.good())
   {
@@ -202,7 +218,7 @@ void OsmJsonReader::_loadJSON(QString jsonStr)
     QString reason = QString::fromStdString(e.message());
     QString line = QString::number(e.line());
 
-    LOG_DEBUG(jsonStr);
+    LOG_DEBUG(json);
     throw HootException(QString("Error parsing JSON: %1 (line %2)").arg(reason).arg(line));
   }
   catch (const std::exception& e)
@@ -212,7 +228,7 @@ void OsmJsonReader::_loadJSON(QString jsonStr)
   }
 }
 
-OsmMapPtr OsmJsonReader::loadFromString(QString jsonStr)
+OsmMapPtr OsmJsonReader::loadFromString(const QString& jsonStr)
 {
   _loadJSON(jsonStr);
   _map.reset(new OsmMap());
@@ -228,7 +244,7 @@ OsmMapPtr OsmJsonReader::loadFromPtree(const boost::property_tree::ptree &tree)
   return _map;
 }
 
-OsmMapPtr OsmJsonReader::loadFromFile(QString path)
+OsmMapPtr OsmJsonReader::loadFromFile(const QString& path)
 {
   QFile infile(path);
   if (!infile.open(QFile::ReadOnly | QFile::Text))
@@ -411,7 +427,7 @@ void OsmJsonReader::_addTags(const boost::property_tree::ptree &item, hoot::Elem
   }
 }
 
-void OsmJsonReader::scrubQuotes(QString &jsonStr)
+void OsmJsonReader::scrubQuotes(QString& jsonStr)
 {
   // We allow the use of single quotes, for ease of coding
   // test strings into c++. Single quotes within string literals
@@ -431,14 +447,15 @@ void OsmJsonReader::scrubQuotes(QString &jsonStr)
   }
 }
 
-void OsmJsonReader::scrubBigInts(QString &jsonStr)
+void OsmJsonReader::scrubBigInts(QString& jsonStr)
 {
   // Boost 1.41 property tree json parser has trouble with
   // integers bigger than 2^31. So we put quotes around big
   // numbers, and that makes it all better
   QRegExp rx1("(\"[^\"]+\"\\s*:\\s*)(-?\\d{8,})");
   jsonStr.replace(rx1, "\\1\"\\2\"");
-  QRegExp rx2("([\\[:,\\s]\\s*)(-?\\d{8,})([,\\}\\]\\n])");
+  // see related note in OsmJsonReaderTest::scrubBigIntsTest about changes made to this regex
+  QRegExp rx2("([\\[,\\s]\\s*)(-?\\d{8,})([,\\}\\]\\n])");
   jsonStr.replace(rx2, "\\1\"\\2\"\\3");
 }
 
@@ -447,18 +464,22 @@ void OsmJsonReader::_readFromHttp()
   if (!_url.isValid())
     throw HootException("Invalid URL: " + _url.toString());
   //  Update the `srsname` parameter to use EPSG:4326
-  if (_url.hasQueryItem("srsname"))
+
+  QUrlQuery urlQuery(_url);
+  if (urlQuery.hasQueryItem("srsname"))
   {
-    _url.removeQueryItem("srsname");
-    _url.addQueryItem("srsname", "EPSG:4326");
+    urlQuery.removeQueryItem("srsname");
+    urlQuery.addQueryItem("srsname", "EPSG:4326");
+    _url.setQuery(urlQuery);
   }
+
   bool split = false;
   int numSplits = 1;
   vector<thread> threads;
   //  Check if there is a bounding box
-  if (_url.hasQueryItem("bbox") && _runParallel)
+  if (urlQuery.hasQueryItem("bbox") && _runParallel)
   {
-    QStringList bbox = _url.allQueryItemValues("bbox");
+    QStringList bbox = urlQuery.allQueryItemValues("bbox");
     //  Parse the bounding box
     geos::geom::Envelope envelope = GeometryUtils::envelopeFromConfigString(bbox.last());
     //  Check if the bounding box needs to be split
@@ -502,6 +523,7 @@ void OsmJsonReader::_readFromHttp()
       }
     }
   }
+
   if (split)
   {
     //  Wait on the work to be completed
@@ -514,7 +536,9 @@ void OsmJsonReader::_readFromHttp()
     //  Do HTTP GET request without splitting
     HootNetworkRequest request;
     request.networkRequest(_url);
-    _results.append(QString::fromUtf8(request.getResponseContent().data()));
+    const QString response = QString::fromUtf8(request.getResponseContent().data());
+    LOG_VART(response.left(200));
+    _results.append(response);
   }
 }
 
@@ -532,8 +556,10 @@ void OsmJsonReader::_doHttpRequestFunc()
       _bboxMutex.unlock();
       //  Update the URL
       QUrl url(_url);
-      url.removeQueryItem("bbox");
-      url.addQueryItem("bbox", GeometryUtils::toString(envelope) + ",EPSG:4326");
+      QUrlQuery urlQuery(url);
+      urlQuery.removeQueryItem("bbox");
+      urlQuery.addQueryItem("bbox", GeometryUtils::toString(envelope) + ",EPSG:4326");
+      url.setQuery(urlQuery);
       HootNetworkRequest request;
       LOG_VART(url);
       request.networkRequest(url);

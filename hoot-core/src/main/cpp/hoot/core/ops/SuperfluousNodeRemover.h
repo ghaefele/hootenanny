@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #ifndef SUPERFLUOUSNODEREMOVER_H
@@ -36,12 +36,10 @@
 #include <hoot/core/io/Serializable.h>
 #include <hoot/core/ops/Boundable.h>
 #include <hoot/core/ops/OsmMapOperation.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 // Standard
 #include <set>
-
-// TGS
-#include <tgs/SharedPtr.h>
 
 namespace hoot
 {
@@ -55,7 +53,8 @@ class OsmMap;
  * of a way and inside the bounds will be removed. This is most useful when performing tile based
  * operations such as the FourPassDriver.
  */
-class SuperfluousNodeRemover : public OsmMapOperation, public Serializable, public Boundable
+class SuperfluousNodeRemover : public OsmMapOperation, public Serializable, public Boundable,
+  public OperationStatusInfo
 {
 public:
 
@@ -63,27 +62,31 @@ public:
 
   SuperfluousNodeRemover();
 
-  virtual void apply(boost::shared_ptr<OsmMap>& map);
+  virtual void apply(std::shared_ptr<OsmMap>& map);
 
   virtual std::string getClassName() const { return className(); }
 
   virtual void readObject(QDataStream& is);
 
-  static boost::shared_ptr<OsmMap> removeNodes(boost::shared_ptr<const OsmMap> map);
+  static std::shared_ptr<OsmMap> removeNodes(const std::shared_ptr<const OsmMap>& map);
 
-  static void removeNodes(boost::shared_ptr<OsmMap>& map, const geos::geom::Envelope& e);
+  static void removeNodes(std::shared_ptr<OsmMap>& map, const geos::geom::Envelope& e);
 
   virtual void setBounds(const geos::geom::Envelope &bounds);
 
   virtual void writeObject(QDataStream& os) const;
 
-  virtual QString getDescription() const { return "Removes all nodes no part of a way"; }
+  virtual QString getDescription() const { return "Removes all nodes not part of a way"; }
+
+  virtual QString getInitStatusMessage() const { return "Removing superfluous nodes..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Removed " + QString::number(_numAffected) + " superfluous nodes"; }
 
 protected:
 
   geos::geom::Envelope _bounds;
   std::set<long> _usedNodes;
-
 };
 
 }

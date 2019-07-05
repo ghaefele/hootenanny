@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef __SINGLE_SIDED_NETWORK_MATCHER_H__
 #define __SINGLE_SIDED_NETWORK_MATCHER_H__
@@ -70,10 +70,14 @@ public:
    */
   SingleSidedNetworkMatcher();
 
+  // Leaving this hardcoded for now, as we don't use this matcher in production conflation jobs.
+  // If we ever do end up using it production, then add a config option for it.
+  virtual double getMatchThreshold() const { return 0.15; }
+
   /**
    * Use this instead of a constructor.
    */
-  static boost::shared_ptr<SingleSidedNetworkMatcher> create();
+  static std::shared_ptr<SingleSidedNetworkMatcher> create();
 
   void iterate();
 
@@ -103,21 +107,21 @@ private:
       score(s)
     {}
 
-    QString toString() const { return QString("match: %1 score: %2").arg(match->toString()).
-      arg(score); }
+    QString toString() const
+    { return QString("match: %1 score: %2").arg(match->toString()).arg(score); }
 
     ConstEdgeMatchPtr match;
     double score;
   };
 
-  typedef boost::shared_ptr<EdgeLinkScore> EdgeLinkScorePtr;
+  typedef std::shared_ptr<EdgeLinkScore> EdgeLinkScorePtr;
 
   typedef SingleAssignmentProblemSolver<ConstNetworkEdgePtr, ConstNetworkEdgePtr> Saps;
 
   /// [v2]
-  typedef QHash<ConstNetworkEdgePtr, QList<EdgeLinkScorePtr> > EdgeMatchScoreMap;
+  typedef QHash<ConstNetworkEdgePtr, QList<EdgeLinkScorePtr>> EdgeMatchScoreMap;
   /// [v2][v1]
-  typedef QHash< ConstNetworkVertexPtr, QHash<ConstNetworkVertexPtr, double> > VertexScoreMap;
+  typedef QHash<ConstNetworkVertexPtr, QHash<ConstNetworkVertexPtr, double>> VertexScoreMap;
 
   IndexedEdgeMatchSetPtr _edgeMatches;
   EdgeMatchScoreMap _edge2Scores;
@@ -148,8 +152,8 @@ private:
 
 };
 
-typedef boost::shared_ptr<SingleSidedNetworkMatcher> SingleSidedNetworkMatcherPtr;
-typedef boost::shared_ptr<const SingleSidedNetworkMatcher> ConstSingleSidedNetworkMatcherPtr;
+typedef std::shared_ptr<SingleSidedNetworkMatcher> SingleSidedNetworkMatcherPtr;
+typedef std::shared_ptr<const SingleSidedNetworkMatcher> ConstSingleSidedNetworkMatcherPtr;
 
 // not implemented
 bool operator<(ConstSingleSidedNetworkMatcherPtr, ConstSingleSidedNetworkMatcherPtr);

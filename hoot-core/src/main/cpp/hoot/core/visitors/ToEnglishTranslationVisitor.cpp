@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include "ToEnglishTranslationVisitor.h"
@@ -45,11 +45,11 @@ ToEnglishTranslationVisitor::ToEnglishTranslationVisitor() :
 _ignorePreTranslatedTags(false),
 _parseNames(false),
 _numTotalElements(0),
+_numProcessedTags(0),
+_numProcessedElements(0),
 _currentElementHasSuccessfulTagTranslation(false),
 _numTagTranslationsMade(0),
 _numElementsWithSuccessfulTagTranslation(0),
-_numProcessedTags(0),
-_numProcessedElements(0),
 _taskStatusUpdateInterval(10000)
 {
 }
@@ -93,7 +93,7 @@ void ToEnglishTranslationVisitor::setConfiguration(const Settings& conf)
   _taskStatusUpdateInterval = opts.getTaskStatusUpdateInterval();
 }
 
-void ToEnglishTranslationVisitor::visit(const boost::shared_ptr<Element>& e)
+void ToEnglishTranslationVisitor::visit(const std::shared_ptr<Element>& e)
 {
   if (_tagKeys.isEmpty())
   {
@@ -152,7 +152,7 @@ void ToEnglishTranslationVisitor::visit(const boost::shared_ptr<Element>& e)
 }
 
 bool ToEnglishTranslationVisitor::_translate(const ElementPtr& e,
-                                             const QString toTranslateTagKey)
+                                             const QString& toTranslateTagKey)
 {
   bool translationMade = false;
 

@@ -28,11 +28,11 @@
 #define BUILDINGOUTLINEUPDATEOP_H
 
 // Hoot
-#include <hoot/core/ops/OsmMapOperation.h>
-#include <hoot/core/io/Serializable.h>
-#include <hoot/core/elements/Relation.h>
 #include <hoot/core/conflate/review/ReviewMarker.h>
+#include <hoot/core/elements/Relation.h>
 #include <hoot/core/info/OperationStatusInfo.h>
+#include <hoot/core/io/Serializable.h>
+#include <hoot/core/ops/OsmMapOperation.h>
 #include <hoot/core/util/Configurable.h>
 
 // Standard
@@ -53,11 +53,11 @@ public:
 
   static std::string className() { return "hoot::BuildingOutlineUpdateOp"; }
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
 
   BuildingOutlineUpdateOp();
 
-  virtual void apply(boost::shared_ptr<OsmMap>& map) override;
+  virtual void apply(std::shared_ptr<OsmMap>& map) override;
 
   virtual std::string getClassName() const { return className(); }
 
@@ -68,9 +68,8 @@ public:
   virtual QString getInitStatusMessage() const
   { return "Updating building outlines that changed during conflation..."; }
 
-  // finish; wasn't obvious how to count the total affected - #2933
   virtual QString getCompletedStatusMessage() const
-  { return ""; }
+  { return "Updated " + QString::number(_numAffected) + " building outlines"; }
 
   virtual QString getDescription() const override
   { return "Updates any multi-part building outlines that changed during conflation"; }
@@ -79,7 +78,7 @@ public:
 
 private:
 
-  boost::shared_ptr<OsmMap> _map;
+  std::shared_ptr<OsmMap> _map;
   ReviewMarker _reviewMarker;
   // If enabled, this will remove all building relations that were used as a source for creating
   // the outline multipoly relations by this class.
@@ -87,6 +86,7 @@ private:
   std::set<ElementId> _buildingRelationIds;
 
   void _createOutline(const RelationPtr& building);
+  void _unionOutline(const RelationPtr& building, const ElementPtr& element, std::shared_ptr<geos::geom::Geometry>& outline);
 
   void _extractUsedNodes(const RelationPtr& r, std::set<long>& nodes);
 
@@ -94,8 +94,8 @@ private:
    * Match nodes in change to nodes in reference. If there is an exact node match then change
    * "changed" by replacing the nodes with the equivalent nodes in reference.
    */
-  void _mergeNodes(const boost::shared_ptr<Element>& changed,
-    const RelationPtr& reference);
+  void _mergeNodes(const std::shared_ptr<Element>& changed,
+                   const RelationPtr& reference);
 
   void _deleteBuildingRelations();
 };

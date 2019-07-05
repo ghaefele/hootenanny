@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include "AttributeCoOccurrence.h"
@@ -56,7 +56,7 @@ class RefToEidVisitor : public ConstElementVisitor
 {
 public:
 
-  typedef map<QString, set<ElementId> > RefToEid;
+  typedef map<QString, set<ElementId>> RefToEid;
 
   explicit RefToEidVisitor(QString ref) : _ref(ref) {}
 
@@ -241,11 +241,9 @@ void AttributeCoOccurrence::addToMatrix(const ConstOsmMapPtr& in)
 
 {
   RefToEidVisitor ref2(MetadataTags::Ref2());
-
   in->visitRo(ref2);
 
   CoOccurrenceVisitor coOccurrenceResult(ref2.getRefToEid(), _resultMatrix);
-
   in->visitRo(coOccurrenceResult);
 }
 
@@ -254,7 +252,7 @@ QString AttributeCoOccurrence::printTable()
 {
   TextTable::Data data;
 
-  for(CoOccurrenceHash::const_iterator it = _resultMatrix.begin(); it != _resultMatrix.end(); ++it)
+  for (CoOccurrenceHash::const_iterator it = _resultMatrix.begin(); it != _resultMatrix.end(); ++it)
   {
     // Get the list of keys and build a reverse matrix
     for (HashMap<QString, int>::const_iterator jt = it->second.begin();
@@ -276,7 +274,7 @@ QString AttributeCoOccurrence::printList()
   QString result;
 
   // Build a list of REF1 keys so we can sort the table
-  for(CoOccurrenceHash::const_iterator it = _resultMatrix.begin(); it != _resultMatrix.end(); ++it)
+  for (CoOccurrenceHash::const_iterator it = _resultMatrix.begin(); it != _resultMatrix.end(); ++it)
   {
     keyList.append(it->first);
   }
@@ -286,7 +284,7 @@ QString AttributeCoOccurrence::printList()
   // Print the Matrix as a list, sorted by REF1 keys
   result += QString("N  : %1 -> %2\n").arg(MetadataTags::Ref1()).arg(MetadataTags::Ref2());
 
-  for(int it=0; it < keyList.size(); it++)
+  for (int it=0; it < keyList.size(); it++)
   {
     CoOccurrenceHash::const_iterator jt = _resultMatrix.find(keyList[it]);
 

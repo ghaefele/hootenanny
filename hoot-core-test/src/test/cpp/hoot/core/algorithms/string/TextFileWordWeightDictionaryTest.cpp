@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2013, 2014, 2015, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2013, 2014, 2015, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 // Hoot
@@ -44,10 +44,16 @@ class TextFileWordWeightDictionaryTest : public HootTestFixture
 
 public:
 
+  TextFileWordWeightDictionaryTest()
+    : HootTestFixture("test-files/algorithms/string/",
+                      UNUSED_PATH)
+  {
+  }
+
   void runTest()
   {
-    TextFileWordWeightDictionary uut("test-files/algorithms/string/WordWeight.tsv");
-    HOOT_STR_EQUALS("[7]{(street, 100), (foo, 1), (fou, 1), (baar, 1), (road, 50), (lane, 25), (bar, 3)}", uut._weights);
+    TextFileWordWeightDictionary uut(_inputPath + "WordWeight.tsv");
+    HOOT_STR_EQUALS("[7]{(bar, 3), (baar, 1), (foo, 1), (fou, 1), (road, 50), (street, 100), (lane, 25)}", uut._weights);
     CPPUNIT_ASSERT_DOUBLES_EQUAL(0.0055, uut.getWeight("foo"), 0.0001);
     CPPUNIT_ASSERT_DOUBLES_EQUAL(0.0166, uut.getWeight("bar"), 0.0001);
   }

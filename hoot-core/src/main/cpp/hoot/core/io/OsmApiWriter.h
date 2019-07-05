@@ -33,8 +33,9 @@
 #include <hoot/core/io/OsmApiCapabilites.h>
 #include <hoot/core/io/OsmApiChangeset.h>
 #include <hoot/core/io/OsmApiChangesetElement.h>
-#include <hoot/core/ops/stats/SingleStat.h>
+#include <hoot/core/info/SingleStat.h>
 #include <hoot/core/util/Configurable.h>
+#include <hoot/core/util/ProgressReporter.h>
 
 //  Standard
 #include <mutex>
@@ -51,7 +52,7 @@ namespace hoot
 //  Forward declarations
 class OsmApiWriterTest;
 
-class OsmApiWriter : public Configurable
+class OsmApiWriter : public Configurable, public ProgressReporter
 {
   /** OSM API URL paths */
   const QString API_PATH_CAPABILITIES = "/api/capabilities/";
@@ -121,6 +122,15 @@ public:
    */
   void showProgress(bool show) { _showProgress = show; }
 
+  /**
+   * @see ProgressReporter
+   */
+  virtual void setProgress(Progress progress) { _progress = progress; }
+  /**
+   * @see ProgressReporter
+   */
+  virtual unsigned int getNumSteps() const { return 1; }
+
 private:
   /**
    * @brief The OsmApiFailureInfo struct
@@ -132,7 +142,7 @@ private:
     int status;
     QString response;
   };
-  typedef boost::shared_ptr<OsmApiFailureInfo> OsmApiFailureInfoPtr;
+  typedef std::shared_ptr<OsmApiFailureInfo> OsmApiFailureInfoPtr;
   /**
    * @brief _createChangeset Request a changeset ID from the API
    *  see: https://wiki.openstreetmap.org/wiki/API_v0.6#Create:_PUT_.2Fapi.2F0.6.2Fchangeset.2Fcreate
@@ -235,12 +245,17 @@ private:
    *  the entirety of a way or relation, loaded with 'changeset.apidb.max.size' option
    */
   long _maxChangesetSize;
+  /** Flag to turn on OSM API writer throttling */
+  bool _throttleWriters;
+  /** Number of seconds for a writer thread to wait after a successful API writer before continuing, if enabled */
+  int _throttleTime;
   /** Queried capabilities from the target OSM API */
   OsmApiCapabilites _capabilities;
   /** Actual statistics */
   QList<SingleStat> _stats;
   /** Progress flag */
   bool _showProgress;
+  Progress _progress;
   /** OAuth 1.0 consumer key registered with OpenstreetMap */
   QString _consumerKey;
   /** OAuth 1.0 consumer secred registered with OpenstreetMap */

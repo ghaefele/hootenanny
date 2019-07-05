@@ -28,9 +28,6 @@
 #ifndef NOINFORMATIONELEMENTREMOVER_H
 #define NOINFORMATIONELEMENTREMOVER_H
 
-// TGS
-#include <tgs/SharedPtr.h>
-
 // Hoot
 #include <hoot/core/ops/OsmMapOperation.h>
 #include <hoot/core/info/OperationStatusInfo.h>
@@ -55,21 +52,20 @@ class NoInformationElementRemover : public OsmMapOperation, public OperationStat
     /**
       @see OsmMapOperation
     */
-    void apply(boost::shared_ptr<OsmMap>& map);
+    void apply(std::shared_ptr<OsmMap>& map);
 
     virtual QString getInitStatusMessage() const
     { return "Removing elements with no information tags..."; }
 
-    // finish; wasn't obvious how to count the total affected - #2933
     virtual QString getCompletedStatusMessage() const
-    { return ""; }
+    { return "Removed " + QString::number(_numAffected) + " elements with no information tags"; }
 
     virtual QString getDescription() const
     { return "Removes elements containing no information in tags"; }
 
   protected:
 
-    boost::shared_ptr<OsmMap> _map;
+    std::shared_ptr<OsmMap> _map;
 };
 
 }

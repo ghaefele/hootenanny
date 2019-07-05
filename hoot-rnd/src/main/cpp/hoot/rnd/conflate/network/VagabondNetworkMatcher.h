@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef __VAGABOND_NETWORK_MATCHER_H__
 #define __VAGABOND_NETWORK_MATCHER_H__
@@ -73,10 +73,14 @@ public:
    */
   VagabondNetworkMatcher();
 
+  // Leaving this hardcoded for now, as we don't use this matcher in production conflation jobs.
+  // If we ever do end up using it production, then add a config option for it.
+  virtual double getMatchThreshold() const { return 0.15; }
+
   /**
    * Use this instead of a constructor. To simplify life a shared pointer should always be used.
    */
-  static boost::shared_ptr<VagabondNetworkMatcher> create();
+  static std::shared_ptr<VagabondNetworkMatcher> create();
 
   virtual void iterate();
 
@@ -110,8 +114,8 @@ private:
   QSet<EdgeMatchPtr> _getConnectedEdges(ConstNetworkVertexPtr v1, ConstNetworkVertexPtr v2);
 };
 
-typedef boost::shared_ptr<VagabondNetworkMatcher> VagabondNetworkMatcherPtr;
-typedef boost::shared_ptr<const VagabondNetworkMatcher> ConstVagabondNetworkMatcherPtr;
+typedef std::shared_ptr<VagabondNetworkMatcher> VagabondNetworkMatcherPtr;
+typedef std::shared_ptr<const VagabondNetworkMatcher> ConstVagabondNetworkMatcherPtr;
 
 // not implemented
 bool operator<(ConstVagabondNetworkMatcherPtr, ConstVagabondNetworkMatcherPtr);

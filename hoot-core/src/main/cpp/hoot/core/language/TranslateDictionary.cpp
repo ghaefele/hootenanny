@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include "TranslateDictionary.h"
@@ -45,7 +45,7 @@ namespace pt = boost::property_tree;
 namespace hoot
 {
 
-boost::shared_ptr<TranslateDictionary> TranslateDictionary::_theInstance = NULL;
+std::shared_ptr<TranslateDictionary> TranslateDictionary::_theInstance = NULL;
 
 TranslateDictionary::TranslateDictionary() :
 _transliterationCachingEnabled(false)
@@ -93,24 +93,24 @@ TranslateDictionary& TranslateDictionary::getInstance()
   return *_theInstance;
 }
 
-bool TranslateDictionary::getFromTransliterationCache(const QString originalText,
+bool TranslateDictionary::getFromTransliterationCache(const QString& originalText,
                                                       QString& transliteratedText)
 {
   return _transliterationCache->get(originalText, transliteratedText);
 }
 
-void TranslateDictionary::insertIntoTransliterationCache(const QString originalText,
-                                                         const QString transliteratedText)
+void TranslateDictionary::insertIntoTransliterationCache(const QString& originalText,
+                                                         const QString& transliteratedText)
 {
   _transliterationCache->insert(originalText, transliteratedText);
 }
 
-void TranslateDictionary::load(QString path)
+void TranslateDictionary::load(const QString& path)
 {
   try
   {
     pt::ptree pt;
-    pt::read_json(path.toAscii().data(), pt);
+    pt::read_json(path.toLatin1().data(), pt);
 
     _loadTags(pt);
   }
@@ -123,11 +123,11 @@ void TranslateDictionary::load(QString path)
 
 void TranslateDictionary::_loadTags(pt::ptree& tree)
 {
-  BOOST_FOREACH(pt::ptree::value_type& translation, tree.get_child("Dictionary"))
+  for (pt::ptree::value_type& translation : tree.get_child("Dictionary"))
   {
     int i = 0;
     QString from;
-    BOOST_FOREACH(pt::ptree::value_type& t, translation.second.get_child(""))
+    for (pt::ptree::value_type& t : translation.second.get_child(""))
     {
       std::string s = t.second.data();
       if (i == 0)

@@ -51,11 +51,12 @@ HOOT_FACTORY_REGISTER(MergerCreator, NetworkMergerCreator)
 NetworkMergerCreator::NetworkMergerCreator()
 {
   _map = 0;
+  _minMatchOverlapPercentage = ConfigOptions().getNetworkMergerMinLargeMatchOverlapPercentage();
 }
 
 bool NetworkMergerCreator::createMergers(const MatchSet& matchesIn, vector<Merger*>& mergers) const
 {
-  LOG_TRACE("Creating mergers with " << className() << "...");
+  LOG_DEBUG("Creating mergers with " << className() << "...");
   LOG_TRACE("Creating mergers for match set: " << matchesIn);
 
   QString matchesList = "";
@@ -70,8 +71,8 @@ bool NetworkMergerCreator::createMergers(const MatchSet& matchesIn, vector<Merge
       }
     }
   }
-  LOG_TRACE(matchesList.size());
-  LOG_TRACE(matchesList);
+  LOG_VART(matchesList.size());
+  LOG_VART(matchesList);
 
   MatchSet matches = matchesIn;
   LOG_VART(matches);
@@ -104,16 +105,18 @@ bool NetworkMergerCreator::createMergers(const MatchSet& matchesIn, vector<Merge
             "Added match " << count << " / " << matches.size() << " to partial network merger...");
         }
       }
+
       if (!ConfigOptions().getHighwayMergeTagsOnly())
       {
         mergers.push_back(new PartialNetworkMerger(pairs, edgeMatches, m->getNetworkDetails()));
       }
       else
       {
-        // TODO: We need to allow for HighwayTagOnlyMerger to spawn off PartialNetworkMerger here,
-        // I guess...but that's kind of nasty... (applies to the rest of the calls to
-        // HighwayTagOnlyMerger in this class as well).
-        mergers.push_back(new HighwayTagOnlyMerger(pairs));
+        mergers.push_back(
+          new HighwayTagOnlyMerger(
+            pairs,
+            std::shared_ptr<PartialNetworkMerger>(
+              new PartialNetworkMerger(pairs, edgeMatches, m->getNetworkDetails()))));
       }
     }
     else
@@ -122,44 +125,55 @@ bool NetworkMergerCreator::createMergers(const MatchSet& matchesIn, vector<Merge
       // reverted as we play with more data, but at this point it seems like a reasonable heuristic.
       if (const NetworkMatch* larger = _getLargestContainer(matches))
       {
-        LOG_TRACE("Adding the larger match to the partial network merger...");
+        LOG_DEBUG("Adding the larger match to the partial network merger...");
+
         if (!ConfigOptions().getHighwayMergeTagsOnly())
         {
           mergers.push_back(
             new PartialNetworkMerger(
-              larger->getMatchPairs(),
-              QSet<ConstEdgeMatchPtr>() << larger->getEdgeMatch(),
+              larger->getMatchPairs(), QSet<ConstEdgeMatchPtr>() << larger->getEdgeMatch(),
               larger->getNetworkDetails()));
         }
         else
         {
-          mergers.push_back(new HighwayTagOnlyMerger(larger->getMatchPairs()));
+          mergers.push_back(
+            new HighwayTagOnlyMerger(
+              larger->getMatchPairs(),
+              std::shared_ptr<PartialNetworkMerger>(
+                new PartialNetworkMerger(
+                  larger->getMatchPairs(), QSet<ConstEdgeMatchPtr>() << larger->getEdgeMatch(),
+                  larger->getNetworkDetails()))));
         }
       }
       else
       {
         const double overlapPercent = _getOverlapPercent(matches);
-        // move value to config - #2913
-        if (overlapPercent > 80.0) // Go ahead and merge largest match
+        if (overlapPercent > _minMatchOverlapPercentage) // Go ahead and merge largest match
         {
           const NetworkMatch* largest = _getLargest(matches);
           LOG_TRACE("Merging largest Match: " << largest->getEdgeMatch()->getUid());
+
           if (!ConfigOptions().getHighwayMergeTagsOnly())
           {
             mergers.push_back(
               new PartialNetworkMerger(
-                largest->getMatchPairs(),
-                QSet<ConstEdgeMatchPtr>() << largest->getEdgeMatch(),
+                largest->getMatchPairs(), QSet<ConstEdgeMatchPtr>() << largest->getEdgeMatch(),
                 largest->getNetworkDetails()));
           }
           else
           {
-            mergers.push_back(new HighwayTagOnlyMerger(largest->getMatchPairs()));
+            mergers.push_back(
+              new HighwayTagOnlyMerger(
+                largest->getMatchPairs(),
+                std::shared_ptr<PartialNetworkMerger>(
+                  new PartialNetworkMerger(
+                    largest->getMatchPairs(), QSet<ConstEdgeMatchPtr>() << largest->getEdgeMatch(),
+                    largest->getNetworkDetails()))));
           }
         }
         else // Throw a review
         {
-          LOG_TRACE("Marking " << matches.size() << " overlapping matches for review...");
+          LOG_DEBUG("Marking " << matches.size() << " overlapping matches for review...");
           int count = 0;
           for (MatchSet::const_iterator it = matches.begin(); it != matches.end(); ++it)
           {
@@ -196,7 +210,7 @@ bool NetworkMergerCreator::createMergers(const MatchSet& matchesIn, vector<Merge
   }
   else
   {
-    LOG_TRACE("Match invalid; skipping merge: " << (*matches.begin())->toString());
+    LOG_DEBUG("Match invalid; skipping merge: " << (*matches.begin())->toString());
   }
   LOG_VART(result);
 
@@ -270,20 +284,20 @@ double NetworkMergerCreator::_getOverlapPercent(const MatchSet& matches) const
       const NetworkMatch* nmj = dynamic_cast<const NetworkMatch*>(*jt);
       LOG_TRACE(nmi->getEdgeMatch()->getUid() << ":" << nmj->getEdgeMatch()->getUid());
       double percent = _getOverlapPercent(nmi, nmj);
-      LOG_TRACE(percent);
+      LOG_VART(percent);
       count += percent;
       total += 100.0;
     }
   }
 
-  return 100.0*count / total;
+  return 100.0 * count / total;
 }
 
 // Tricky: lets approach this from the perspective of the smaller match, not the larger
 double NetworkMergerCreator::_getOverlapPercent(const NetworkMatch* m1, const NetworkMatch* m2) const
 {
   QList<EdgeString::EdgeEntry> m1e1, m1e2, m2e1, m2e2;
-  boost::shared_ptr<const OsmMap> pMap(_map->shared_from_this());
+  std::shared_ptr<const OsmMap> pMap(_map->shared_from_this());
 
   // We want m1e1 to be the shorter match set
   if (m1->getEdgeMatch()->getString1()->calculateLength(pMap)
@@ -311,8 +325,8 @@ double NetworkMergerCreator::_getOverlapPercent(const NetworkMatch* m1, const Ne
     m2e2 = m1->getEdgeMatch()->getString2()->getAllEdges();
   }
 
-  double count = 0;
-  double total = 0;
+  double count = 0.0;
+  double total = 0.0;
   foreach (EdgeString::EdgeEntry ee, m1e1)
   {
     Meters edgeLen = ee.getEdge()->calculateLength(pMap);
@@ -332,7 +346,7 @@ double NetworkMergerCreator::_getOverlapPercent(const NetworkMatch* m1, const Ne
 
   foreach (EdgeString::EdgeEntry ee, m1e2)
   {
-    boost::shared_ptr<const OsmMap> pMap(_map->shared_from_this());
+    std::shared_ptr<const OsmMap> pMap(_map->shared_from_this());
     Meters edgeLen = ee.getEdge()->calculateLength(pMap);
     if (m2e2.contains(ee))
     {

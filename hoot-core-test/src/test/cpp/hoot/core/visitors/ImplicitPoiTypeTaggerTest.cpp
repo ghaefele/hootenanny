@@ -22,16 +22,16 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 // Hoot
 #include <hoot/core/TestUtils.h>
 #include <hoot/core/io/ImplicitTagRulesSqliteWriter.h>
 #include <hoot/core/io/OsmJsonReader.h>
+#include <hoot/core/language/DictionaryTranslator.h>
 #include <hoot/core/util/Log.h>
 #include <hoot/core/visitors/ImplicitPoiTypeTagger.h>
-#include <hoot/core/language/DictionaryTranslator.h>
 
 namespace hoot
 {
@@ -51,23 +51,21 @@ class ImplicitPoiTypeTaggerTest : public HootTestFixture
 
 public:
 
-  static QString inDir() { return "test-files/visitors/ImplicitPoiTypeTaggerTest"; }
-  static QString outDir() { return "test-output/visitors/ImplicitPoiTypeTaggerTest"; }
-
   ImplicitPoiTypeTaggerTest()
+    : HootTestFixture("test-files/visitors/ImplicitPoiTypeTaggerTest/",
+                      "test-output/visitors/ImplicitPoiTypeTaggerTest/")
   {
     setResetType(ResetAll);
-    TestUtils::mkpath(outDir());
   }
 
   void runBasicTest()
   {
     //regenerate the db file
     const QString databaseOutFile =
-      outDir() + "/ImplicitPoiTypeTaggerTest-runBasicTest-rules.sqlite";
+      _outputPath + "ImplicitPoiTypeTaggerTest-runBasicTest-rules.sqlite";
     ImplicitTagRulesSqliteWriter writer;
     writer.open(databaseOutFile);
-    writer.write("test-files/visitors/ImplicitPoiTypeTaggerTest/runBasicTest-ruleWordParts");
+    writer.write(_inputPath + "runBasicTest-ruleWordParts");
     writer.close();
 
     QString testJsonStr = QString::fromUtf8(
@@ -104,66 +102,67 @@ public:
     uut.setAllowTaggingSpecificFeatures(true);
     uut.setMatchEndOfNameSingleTokenFirst(true);
     uut.setTranslateNamesToEnglish(true);
-    uut._translator = boost::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
+    uut._translator = std::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
     map->visitRw(uut);
 
-    HOOT_STR_EQUALS("name = Alshy Burgers\n"
-                    "amenity = pub\n",
+    HOOT_STR_EQUALS("amenity = pub\n"
+                    "name = Alshy Burgers\n",
                     map->getNode(-1)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: alshy; tags added: amenity = clinic\n"
+    HOOT_STR_EQUALS("amenity = clinic\n"
                     "name = Alshy Clinic\n"
-                    "amenity = clinic\n",
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: alshy; tags added: amenity = clinic\n",
                     map->getNode(-2)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: religion = muslim, amenity = place_of_worship\n"
-                    "poi = yes\n"
-                    "religion = muslim\n"
+    HOOT_STR_EQUALS("amenity = place_of_worship\n"
                     "name = masjid\n"
-                    "amenity = place_of_worship\n",
-                    map->getNode(-3)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: religion = muslim, amenity = place_of_worship\n"
-                    "poi = yes\n"
                     "religion = muslim\n"
-                    "name = masjid\n"
-                    "amenity = place_of_worship\n",
+                    "poi = yes\n"
+                    "hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: amenity = place_of_worship, religion = muslim\n",
                     map->getNode(-3)->getTags());
-    HOOT_STR_EQUALS("place = locality\n"
-                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Mustashfa; tags added: amenity = hospital\n"
+    HOOT_STR_EQUALS("amenity = place_of_worship\n"
+                    "name = masjid\n"
+                    "religion = muslim\n"
+                    "poi = yes\n"
+                    "hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: amenity = place_of_worship, religion = muslim\n",
+                    map->getNode(-3)->getTags());
+    HOOT_STR_EQUALS("amenity = hospital\n"
                     "name = alwhdt Mustashfa\n"
-                    "amenity = hospital\n",
+                    "place = locality\n"
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Mustashfa; tags added: amenity = hospital\n",
                     map->getNode(-4)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: sihhi; tags added: amenity = clinic\n"
+    HOOT_STR_EQUALS("amenity = clinic\n"
+                    "name = Sihhi\n"
                     "alt_name = Şiḩḩī\n"
-                    "name = Sihhi\n"
-                    "amenity = clinic\n",
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: sihhi; tags added: amenity = clinic\n",
                     map->getNode(-5)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Sihhi; tags added: amenity = clinic\n"
-                    "alt_name = Clinic\n"
+    HOOT_STR_EQUALS("amenity = clinic\n"
                     "name = Sihhi\n"
-                    "amenity = clinic\n",
+                    "alt_name = Clinic\n"
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Sihhi; tags added: amenity = clinic\n",
                     map->getNode(-6)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: religion = muslim, amenity = place_of_worship\n"
-                    "religion = muslim\n"
+    HOOT_STR_EQUALS("amenity = place_of_worship\n"
                     "name = masjid mosque\n"
-                    "amenity = place_of_worship\n",
+                    "religion = muslim\n"
+                    "hoot:implicitTags:tagsAdded = Added 2 implicitly derived tag(s) based on: mosque; tags added: amenity = place_of_worship, religion = muslim\n",
                     map->getNode(-7)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Mustashfa alwhdt; tags added: amenity = hospital\n"
+    HOOT_STR_EQUALS("amenity = hospital\n"
                     "name = Mustashfa alwhdt\n"
-                    "amenity = hospital\n",
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: Mustashfa alwhdt; tags added: amenity = hospital\n",
                     map->getNode(-8)->getTags());
-    HOOT_STR_EQUALS("hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: alwhdt; tags added: amenity = clinic\n"
+    HOOT_STR_EQUALS("amenity = clinic\n"
                     "name = alwhdt\n"
-                    "amenity = clinic\n",
+                    "hoot:implicitTags:tagsAdded = Added 1 implicitly derived tag(s) based on: alwhdt; tags added: amenity = clinic\n",
                     map->getNode(-9)->getTags());
+
   }
 
   void runDuplicateTagKeyTest()
   {
     //regenerate the db file
     const QString databaseOutFile =
-      outDir() + "/ImplicitPoiTypeTaggerTest-runDuplicateTagKeyTest-rules.sqlite";
+      _outputPath + "ImplicitPoiTypeTaggerTest-runDuplicateTagKeyTest-rules.sqlite";
     ImplicitTagRulesSqliteWriter writer;
     writer.open(databaseOutFile);
-    writer.write("test-files/visitors/ImplicitPoiTypeTaggerTest/runDuplicateTagKeyTest-ruleWordParts");
+    writer.write(_inputPath + "runDuplicateTagKeyTest-ruleWordParts");
     writer.close();
 
     OsmMapPtr map(new OsmMap());
@@ -181,7 +180,7 @@ public:
     uut.setAllowTaggingSpecificFeatures(true);
     uut.setMatchEndOfNameSingleTokenFirst(true);
     uut.setTranslateNamesToEnglish(true);
-    uut._translator = boost::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
+    uut._translator = std::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
     map->visitRw(uut);
 
     CPPUNIT_ASSERT_EQUAL(2, map->getNode(1)->getTags().size());
@@ -196,10 +195,10 @@ public:
   {
     //regenerate the db file
     const QString databaseOutFile =
-      outDir() + "/ImplicitPoiTypeTaggerTest-runLessSpecificImplicitTagTest-rules.sqlite";
+      _outputPath + "ImplicitPoiTypeTaggerTest-runLessSpecificImplicitTagTest-rules.sqlite";
     ImplicitTagRulesSqliteWriter writer;
     writer.open(databaseOutFile);
-    writer.write("test-files/visitors/ImplicitPoiTypeTaggerTest/runLessSpecificImplicitTagTest-ruleWordParts");
+    writer.write(_inputPath + "runLessSpecificImplicitTagTest-ruleWordParts");
     writer.close();
 
     OsmMapPtr map(new OsmMap());
@@ -216,7 +215,7 @@ public:
     uut.setAllowTaggingSpecificFeatures(true);
     uut.setMatchEndOfNameSingleTokenFirst(true);
     uut.setTranslateNamesToEnglish(true);
-    uut._translator = boost::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
+    uut._translator = std::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
     map->visitRw(uut);
 
     CPPUNIT_ASSERT_EQUAL(2, map->getNode(1)->getTags().size());
@@ -231,11 +230,10 @@ public:
   {
     //regenerate the db file
     const QString databaseOutFile =
-      outDir() + "/ImplicitPoiTypeTaggerTest-runMoreSpecificImplicitTagTest-rules.sqlite";
+      _outputPath + "ImplicitPoiTypeTaggerTest-runMoreSpecificImplicitTagTest-rules.sqlite";
     ImplicitTagRulesSqliteWriter writer;
     writer.open(databaseOutFile);
-    writer.write(
-      "test-files/visitors/ImplicitPoiTypeTaggerTest/runMoreSpecificImplicitTagTest-ruleWordParts");
+    writer.write(_inputPath + "runMoreSpecificImplicitTagTest-ruleWordParts");
     writer.close();
 
     OsmMapPtr map(new OsmMap());
@@ -252,7 +250,7 @@ public:
     uut.setAllowTaggingSpecificFeatures(true);
     uut.setMatchEndOfNameSingleTokenFirst(true);
     uut.setTranslateNamesToEnglish(true);
-    uut._translator = boost::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
+    uut._translator = std::shared_ptr<DictionaryTranslator>(new DictionaryTranslator());
     map->visitRw(uut);
     LOG_VART(map->getNode(1)->getTags());
 

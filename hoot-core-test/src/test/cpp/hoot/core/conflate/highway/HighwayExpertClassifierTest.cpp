@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2014, 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2014, 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 // CPP Unit
@@ -89,7 +89,7 @@ public:
     Coordinate w2c[] = { Coordinate(50, 50), Coordinate(50, -50), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
+    std::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
 
     WaySublineMatch match(WaySubline(WayLocation(map, w1, 0, 0.0), WayLocation(map, w1, 1, 0.0)),
                           WaySubline(WayLocation(map, w2, 0, 0.0), WayLocation(map, w2, 1, 0.0)));
@@ -122,7 +122,7 @@ public:
     Coordinate w2c[] = { Coordinate(0, 5), Coordinate(100, 5), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
+    std::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
 
     WaySublineMatch match(WaySubline(WayLocation(map, w1, 0, 0.0), WayLocation(map, w1, 1, 0.0)),
                           WaySubline(WayLocation(map, w2, 0, 0.0), WayLocation(map, w2, 1, 0.0)));
@@ -155,14 +155,14 @@ public:
     Coordinate w2c[] = { Coordinate(90, 5), Coordinate(190, 5), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
+    std::shared_ptr<HighwayExpertClassifier> classifier(new HighwayExpertClassifier());
 
     WaySublineMatch match(WaySubline(WayLocation(map, w1, 0, 0.0), WayLocation(map, w1, 1, 0.0)),
                           WaySubline(WayLocation(map, w2, 0, 0.0), WayLocation(map, w2, 1, 0.0)));
 
     MatchClassification result = classifier->classify(map, match);
 
-    HOOT_STR_EQUALS("match: 6.75908e-06 miss: 0.999993 review: 0", result.toString());
+    HOOT_STR_EQUALS("match: 6.75908e-6 miss: 0.999993 review: 0", result.toString());
   }
 
 };

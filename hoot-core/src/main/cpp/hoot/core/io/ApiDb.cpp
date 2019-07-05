@@ -53,6 +53,7 @@
 #include <QtSql/QSqlRecord>
 #include <QSet>
 #include <QFile>
+#include <QRegularExpression>
 
 // Standard
 #include <math.h>
@@ -110,27 +111,27 @@ void ApiDb::_resetQueries()
   _getUserIdByName.reset();
   _getUserNameById.reset();
 
-  for (QHash<QString, boost::shared_ptr<QSqlQuery> >::iterator itr = _maxIdQueries.begin();
+  for (QHash<QString, std::shared_ptr<QSqlQuery>>::iterator itr = _maxIdQueries.begin();
        itr != _maxIdQueries.end(); ++itr)
   {
     itr.value().reset();
   }
-  for (QHash<QString, boost::shared_ptr<QSqlQuery> >::iterator itr = _numElementsQueries.begin();
+  for (QHash<QString, std::shared_ptr<QSqlQuery>>::iterator itr = _numElementsQueries.begin();
        itr != _numElementsQueries.end(); ++itr)
   {
     itr.value().reset();
   }
-  for (QHash<QString, boost::shared_ptr<QSqlQuery> >::iterator itr = _numEstimatedElementsQueries.begin();
+  for (QHash<QString, std::shared_ptr<QSqlQuery>>::iterator itr = _numEstimatedElementsQueries.begin();
        itr != _numEstimatedElementsQueries.end(); ++itr)
   {
     itr.value().reset();
   }
-  for (QHash<QString, boost::shared_ptr<QSqlQuery> >::iterator itr = _selectQueries.begin();
+  for (QHash<QString, std::shared_ptr<QSqlQuery>>::iterator itr = _selectQueries.begin();
        itr != _selectQueries.end(); ++itr)
   {
     itr.value().reset();
   }
-  for (QHash<QString, boost::shared_ptr<QSqlQuery> >::iterator itr = _selectAllQueries.begin();
+  for (QHash<QString, std::shared_ptr<QSqlQuery>>::iterator itr = _selectAllQueries.begin();
        itr != _selectAllQueries.end(); ++itr)
   {
     itr.value().reset();
@@ -226,7 +227,7 @@ void ApiDb::rollback()
   _inTransaction = false;
 }
 
-long ApiDb::getUserIdByName(const QString userName)
+long ApiDb::getUserIdByName(const QString& userName)
 {
   LOG_VART(userName);
   if (_getUserIdByName == 0)
@@ -300,7 +301,7 @@ QString ApiDb::getUserNameById(const long userId)
   return userName;
 }
 
-bool ApiDb::userExists(const QString userName)
+bool ApiDb::userExists(const QString& userName)
 {
   return userExists(getUserIdByName(userName));
 }
@@ -342,7 +343,7 @@ bool ApiDb::userExists(const long id)
   return true;
 }
 
-long ApiDb::getUserId(const QString email, bool throwWhenMissing)
+long ApiDb::getUserId(const QString& email, bool throwWhenMissing)
 {
   if (_selectUserByEmail == 0)
   {
@@ -380,7 +381,7 @@ long ApiDb::getUserId(const QString email, bool throwWhenMissing)
   return result;
 }
 
-long ApiDb::insertUser(const QString email, const QString displayName)
+long ApiDb::insertUser(const QString& email, const QString& displayName)
 {
   LOG_TRACE("Inserting user with email: " << email << " and displayName: " << displayName);
 
@@ -439,7 +440,7 @@ long ApiDb::insertUser(const QString email, const QString displayName)
   return id;
 }
 
-vector<long> ApiDb::selectNodeIdsForWay(long wayId, const QString sql)
+vector<long> ApiDb::selectNodeIdsForWay(long wayId, const QString& sql)
 {
   vector<long> result;
 
@@ -473,7 +474,7 @@ vector<long> ApiDb::selectNodeIdsForWay(long wayId, const QString sql)
   return result;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectNodesForWay(long wayId, const QString sql)
+std::shared_ptr<QSqlQuery> ApiDb::selectNodesForWay(long wayId, const QString& sql)
 {
   if (!_selectNodeIdsForWay)
   {
@@ -496,43 +497,25 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectNodesForWay(long wayId, const QString 
 
 Tags ApiDb::unescapeTags(const QVariant &v)
 {
-  /** NOTE:  When we upgrade from Qt4 to Qt5 we can use the QRegularExpression
-   *  classes that should enable the regex below that has both greedy matching
-   *  and lazy matching in the same regex.  The QRegExp class doesn't allow this
-   *  that is why there are two regex objects in this function.
-   *
-   *  Replace it with this:
-   *    QRegularExpression rxKeyValue("\"(.*?)\"=>\"((?:(?!\",).)*)\"(?:, )?");
-   */
   assert(v.type() == QVariant::String);
   QString str = v.toString();
 
   Tags result;
-  QRegExp rxKey("\"(.*)\"=>\"");
-  QRegExp rxValue("((?:(?!\",).)*)\"(?:, )?");
-  //  The key regex needs to be minimal should be (.*?) but that doesn't work
-  //  while the value regex needs to be maximal to consume quotes within the value
-  rxKey.setMinimal(true);
-  rxValue.setMinimal(false);
-  int pos = 0;
-  //  Match the key first
-  while ((pos = rxKey.indexIn(str, pos)) != -1)
-  {
-    pos += rxKey.matchedLength();
-    //  Then match the value, ignoring any key/value pairs that don't match
-    if ((pos = rxValue.indexIn(str, pos)) != -1)
-    {
-      QString key = rxKey.cap(1);
-      QString value = rxValue.cap(1).trimmed();
-      if (!value.isEmpty())
-      {
-        // Unescape the actual key/value pairs
-        _unescapeString(key);
-        _unescapeString(value);
-        result.insert(key, value);
-      }
+  QRegularExpression rxKeyValue("\"(.*?)\"=>\"((?:(?!\",).)*)\"(?:, )?");
+  QRegularExpressionMatchIterator matches = rxKeyValue.globalMatch(str);
 
-      pos += rxValue.matchedLength();
+  while (matches.hasNext())
+  {
+    QRegularExpressionMatch match = matches.next();
+    QString key = match.captured(1);
+    QString value = match.captured(2).trimmed();
+
+    if (!value.isEmpty())
+    {
+      // Unescape the actual key/value pairs
+      _unescapeString(key);
+      _unescapeString(value);
+      result.insert(key, value);
     }
   }
 
@@ -556,7 +539,7 @@ void ApiDb::_unescapeString(QString& s)
   s.replace("\\134", "\\");
 }
 
-QSqlQuery ApiDb::_exec(const QString sql, QVariant v1, QVariant v2, QVariant v3) const
+QSqlQuery ApiDb::_exec(const QString& sql, QVariant v1, QVariant v2, QVariant v3) const
 {
   QSqlQuery q(_db);
 
@@ -610,7 +593,7 @@ long ApiDb::round(double x)
   return (long)(x + 0.5);
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectNodesByBounds(const Envelope& bounds)
+std::shared_ptr<QSqlQuery> ApiDb::selectNodesByBounds(const Envelope& bounds)
 {
   LOG_VARD(bounds);
   const vector<Range> tileRanges = _getTileRanges(bounds);
@@ -658,7 +641,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectNodesByBounds(const Envelope& bounds)
   return _selectNodesByBounds;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectWayIdsByWayNodeIds(const QSet<QString>& nodeIds)
+std::shared_ptr<QSqlQuery> ApiDb::selectWayIdsByWayNodeIds(const QSet<QString>& nodeIds)
 {
   if (nodeIds.size() == 0)
   {
@@ -687,7 +670,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectWayIdsByWayNodeIds(const QSet<QString>
   return _selectWayIdsByWayNodeIds;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectElementsByElementIdList(const QSet<QString>& elementIds,
+std::shared_ptr<QSqlQuery> ApiDb::selectElementsByElementIdList(const QSet<QString>& elementIds,
                                                                   const TableType& tableType)
 {
   if (elementIds.size() == 0)
@@ -718,7 +701,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectElementsByElementIdList(const QSet<QSt
   return _selectElementsByElementIdList;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectWayNodeIdsByWayIds(const QSet<QString>& wayIds)
+std::shared_ptr<QSqlQuery> ApiDb::selectWayNodeIdsByWayIds(const QSet<QString>& wayIds)
 {
   if (wayIds.size() == 0)
   {
@@ -747,7 +730,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectWayNodeIdsByWayIds(const QSet<QString>
   return _selectWayNodeIdsByWayIds;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectRelationIdsByMemberIds(const QSet<QString>& memberIds,
+std::shared_ptr<QSqlQuery> ApiDb::selectRelationIdsByMemberIds(const QSet<QString>& memberIds,
                                                                const ElementType& memberElementType)
 {
   if (memberIds.size() == 0)
@@ -834,7 +817,7 @@ QString ApiDb::_getTileWhereCondition(const vector<Range>& tileIdRanges) const
   return sql;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::getChangesetsCreatedAfterTime(const QString timeStr)
+std::shared_ptr<QSqlQuery> ApiDb::getChangesetsCreatedAfterTime(const QString& timeStr)
 {
   LOG_VARD(timeStr);
   if (!_selectChangesetsCreatedAfterTime)
@@ -861,7 +844,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::getChangesetsCreatedAfterTime(const QString 
   return _selectChangesetsCreatedAfterTime;
 }
 
-QMap<QString, QString> ApiDb::getDbUrlParts(const QString url)
+QMap<QString, QString> ApiDb::getDbUrlParts(const QString& url)
 {
   QMap<QString, QString> dbUrlParts;
 
@@ -876,7 +859,7 @@ QMap<QString, QString> ApiDb::getDbUrlParts(const QString url)
   return dbUrlParts;
 }
 
-QString ApiDb::getPsqlString(const QString url)
+QString ApiDb::getPsqlString(const QString& url)
 {
   const QMap<QString, QString> dbUrlParts = getDbUrlParts(url);
   return
@@ -884,7 +867,7 @@ QString ApiDb::getPsqlString(const QString url)
     " -U " + dbUrlParts["user"] + " -d " + dbUrlParts["database"];
 }
 
-void ApiDb::execSqlFile(const QString dbUrl, const QString sqlFile)
+void ApiDb::execSqlFile(const QString& dbUrl, const QString& sqlFile)
 {
   const QMap<QString, QString> dbUrlParts = ApiDb::getDbUrlParts(dbUrl);
   QString cmd = "export PGPASSWORD=" + dbUrlParts["password"] + "; psql -v ON_ERROR_STOP=1";
@@ -908,7 +891,7 @@ void ApiDb::execSqlFile(const QString dbUrl, const QString sqlFile)
   }
 }
 
-QString ApiDb::getPqString(const QString url)
+QString ApiDb::getPqString(const QString& url)
 {
   const QMap<QString, QString> dbUrlParts = getDbUrlParts(url);
   QString hostAddr = dbUrlParts["host"];
@@ -936,7 +919,7 @@ Settings ApiDb::readDbConfig()
   return result;
 }
 
-void ApiDb::readDbConfig(Settings& settings, QString config_path)
+void ApiDb::readDbConfig(Settings& settings, const QString& config_path)
 {
   QFile fp(config_path);
   if (fp.open(QIODevice::ReadOnly) == false)
@@ -1055,7 +1038,7 @@ long ApiDb::numEstimatedElements(const ElementType& elementType)
   return result;
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectAllElements(const ElementType& elementType)
+std::shared_ptr<QSqlQuery> ApiDb::selectAllElements(const ElementType& elementType)
 {
   const QString elementTableName = elementTypeToElementTableName(elementType);
   if (!_selectAllQueries[elementTableName])
@@ -1082,7 +1065,7 @@ boost::shared_ptr<QSqlQuery> ApiDb::selectAllElements(const ElementType& element
   return _selectAllQueries[elementTableName];
 }
 
-boost::shared_ptr<QSqlQuery> ApiDb::selectElements(const ElementType& elementType, const long minId)
+std::shared_ptr<QSqlQuery> ApiDb::selectElements(const ElementType& elementType, const long minId)
 {
   const QString elementTableName = elementTypeToElementTableName(elementType);
   if (!_selectQueries[elementTableName])

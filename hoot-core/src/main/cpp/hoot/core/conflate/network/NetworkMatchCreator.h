@@ -57,12 +57,16 @@ public:
 
   virtual bool isMatchCandidate(ConstElementPtr element, const ConstOsmMapPtr& map) override;
 
-  virtual boost::shared_ptr<MatchThreshold> getMatchThreshold() override;
+  virtual std::shared_ptr<MatchThreshold> getMatchThreshold() override;
 
 private:
 
-  boost::shared_ptr<MatchThreshold> _matchThreshold;
+  std::shared_ptr<MatchThreshold> _matchThreshold;
   ElementCriterionPtr _userCriterion;
+
+  double _matchScoringFunctionMax;
+  double _matchScoringFunctionCurveMidpointX;
+  double _matchScoringFunctionCurveSteepness;
 
   const Match* _createMatch(const NetworkDetailsPtr &map, NetworkEdgeScorePtr e,
     ConstMatchThresholdPtr mt);

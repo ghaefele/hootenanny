@@ -35,20 +35,20 @@
 #include <geos/geom/LineString.h>
 
 // Hoot
-#include <hoot/core/elements/OsmMap.h>
 #include <hoot/core/TestUtils.h>
 #include <hoot/core/algorithms/subline-matching/MaximalSublineStringMatcher.h>
 #include <hoot/core/conflate/highway/HighwayExpertClassifier.h>
 #include <hoot/core/conflate/highway/HighwayMatch.h>
 #include <hoot/core/conflate/highway/HighwaySnapMerger.h>
 #include <hoot/core/conflate/matching/MatchThreshold.h>
-#include <hoot/core/elements/Way.h>
-#include <hoot/core/io/OsmMapWriterFactory.h>
-#include <hoot/core/io/OsmJsonWriter.h>
 #include <hoot/core/elements/ElementConverter.h>
+#include <hoot/core/elements/OsmMap.h>
+#include <hoot/core/elements/Way.h>
+#include <hoot/core/io/OsmJsonWriter.h>
+#include <hoot/core/io/OsmMapWriterFactory.h>
+#include <hoot/core/schema/MetadataTags.h>
 #include <hoot/core/util/Log.h>
 #include <hoot/core/util/MapProjector.h>
-#include <hoot/core/schema/MetadataTags.h>
 
 // Tgs
 #include <tgs/StreamUtils.h>
@@ -112,16 +112,16 @@ public:
     Coordinate w2c[] = { Coordinate(100, 0), Coordinate(0, 0), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), w2->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     ElementConverter ec(map);
@@ -178,16 +178,16 @@ public:
     Coordinate w2c[] = { Coordinate(0, 0), Coordinate(100, 0), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), w2->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     HOOT_STR_EQUALS(0, replaced.size());
@@ -222,11 +222,11 @@ public:
     Coordinate w2c[] = { Coordinate(0, 0), Coordinate(100, 0), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), w2->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
@@ -288,23 +288,23 @@ public:
     r->setTag("highway", "footway");
     map->addElement(r);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(r->getElementId(), w3->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     QString json = OsmJsonWriter().toString(map);
 
     TestUtils::mkpath("tmp");
     MapProjector::projectToWgs84(map);
-    OsmMapWriterFactory::write(map, "tmp/dum.osm");
+    OsmMapWriterFactory::write(map, "tmp/HighwaySnapMergerTest.osm");
 
     QString expected = QString("{'version': 0.6,'generator': 'Hootenanny','elements': [\n"
         "{'type':'node','id':-1,'lat':5,'lon':20},\n"
@@ -316,15 +316,15 @@ public:
         "{'type':'node','id':-11,'lat':5,'lon':100},\n"
         "{'type':'node','id':-12,'lat':0,'lon':20},\n"
         "{'type':'node','id':-13,'lat':0,'lon':60},\n"
-        "{'type':'way','id':-17,'nodes':[-5,-1],'tags':{'uuid':'w3','highway':'path','" + MetadataTags::ErrorCircular() + "':'15'},\n"
+        "{'type':'way','id':-17,'nodes':[-5,-1],'tags':{'highway':'path','uuid':'w3','" + MetadataTags::ErrorCircular() + "':'15'},\n"
         "{'type':'way','id':-14,'nodes':[-11,-4],'tags':{'barrier':'wall','uuid':'wall','" + MetadataTags::ErrorCircular() + "':'15'},\n"
         "{'type':'way','id':-13,'nodes':[-3,-11],'tags':{'barrier':'wall','uuid':'wall','" + MetadataTags::ErrorCircular() + "':'15'},\n"
         "{'type':'way','id':-12,'nodes':[-1,-2],'tags':{'uuid':'w1','" + MetadataTags::ErrorCircular() + "':'15'},\n"
         "{'type':'relation','id':-2,'members':[\n"
-        "{'type':'way','ref':-14,'role':''}],'tags':{'uuid':'r','highway':'footway','" + MetadataTags::ErrorCircular() + "':'15'},\n"
+        "{'type':'way','ref':-14,'role':''}],'tags':{'highway':'footway','uuid':'r','" + MetadataTags::ErrorCircular() + "':'15'},\n"
         "{'type':'relation','id':-1,'members':[\n"
         "{'type':'way','ref':-12,'role':''},\n"
-        "{'type':'way','ref':-13,'role':''}],'tags':{'uuid':'r;w3','highway':'footway','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
+        "{'type':'way','ref':-13,'role':''}],'tags':{'highway':'footway','uuid':'r;w3','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
         "}\n"
         "").replace("'", "\"");
     HOOT_STR_EQUALS(expected, json);
@@ -358,16 +358,16 @@ public:
     w2->getTags()["highway"] = "path";
     w2->getTags()["uuid"] = "w2";
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), w2->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     QString json = OsmJsonWriter().toString(map);
@@ -382,10 +382,10 @@ public:
       "{'type':'node','id':-8,'lat':5,'lon':60},\n"
       "{'type':'way','id':-6,'nodes':[-8,-2],'tags':{'" + MetadataTags::ErrorCircular() + "':'15'},\n"
       "{'type':'way','id':-5,'nodes':[-1,-7],'tags':{'" + MetadataTags::ErrorCircular() + "':'15'},\n"
-      "{'type':'way','id':-4,'nodes':[-7,-8],'tags':{'uuid':'w1;w2','highway':'road','" + MetadataTags::ErrorCircular() + "':'15'},\n"
+      "{'type':'way','id':-4,'nodes':[-7,-8],'tags':{'highway':'road','uuid':'w1;w2','" + MetadataTags::ErrorCircular() + "':'15'},\n"
       "{'type':'relation','id':-1,'members':[\n"
       "{'type':'way','ref':-5,'role':''},\n"
-      "{'type':'way','ref':-6,'role':''}],'tags':{'uuid':'w1','highway':'road','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
+      "{'type':'way','ref':-6,'role':''}],'tags':{'highway':'road','uuid':'w1','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
       "}\n"
       "").replace("'", "\"");
     HOOT_STR_EQUALS(expected, json);
@@ -424,16 +424,16 @@ public:
     r->setTag("highway", "footway");
     map->addElement(r);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), r->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     QString json = OsmJsonWriter().toString(map);
@@ -446,8 +446,8 @@ public:
       "{'type':'node','id':-3,'lat':0,'lon':0},\n"
       "{'type':'node','id':-4,'lat':0,'lon':100},\n"
       "{'type':'node','id':-5,'lat':0,'lon':50},\n"
-      "{'type':'way','id':-6,'nodes':[-2,-4],'tags':{'uuid':'r','highway':'footway','" + MetadataTags::ErrorCircular() + "':'15'},\n"
-      "{'type':'way','id':-4,'nodes':[-1,-2],'tags':{'uuid':'w1;r','highway':'road','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
+      "{'type':'way','id':-6,'nodes':[-2,-4],'tags':{'highway':'footway','uuid':'r','" + MetadataTags::ErrorCircular() + "':'15'},\n"
+      "{'type':'way','id':-4,'nodes':[-1,-2],'tags':{'highway':'road','uuid':'w1;r','" + MetadataTags::ErrorCircular() + "':'15'}]\n"
       "}\n"
       "").replace("'", "\"");
     HOOT_STR_EQUALS(expected, json);
@@ -464,16 +464,16 @@ public:
     Coordinate w2c[] = { Coordinate(0, 0), Coordinate(100, 0), Coordinate::getNull() };
     WayPtr w2 = TestUtils::createWay(map, Status::Unknown2, w2c);
 
-    boost::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
+    std::shared_ptr<MaximalSublineStringMatcher> sublineMatcher(new MaximalSublineStringMatcher());
     sublineMatcher->setMinSplitSize(5.0);
     sublineMatcher->setMaxRelevantAngle(toRadians(60.0));
 
-    set< pair<ElementId, ElementId> > pairs;
+    set<pair<ElementId, ElementId>> pairs;
     pairs.insert(pair<ElementId, ElementId>(w1->getElementId(), w2->getElementId()));
 
     HighwaySnapMerger merger(pairs, sublineMatcher);
 
-    vector< pair<ElementId, ElementId> > replaced;
+    vector<pair<ElementId, ElementId>> replaced;
     merger.apply(map, replaced);
 
     merger._markNeedsReview(map, w1, w2, "a review note", "a review type");
@@ -481,7 +481,7 @@ public:
     CPPUNIT_ASSERT_EQUAL((size_t)1, map->getRelations().size());
     //will throw an exception on failure
     ConstRelationPtr reviewRelation =
-      boost::dynamic_pointer_cast<Relation>(
+      std::dynamic_pointer_cast<Relation>(
         TestUtils::getElementWithTag(map, MetadataTags::HootReviewNote(), "a review note"));
     HOOT_STR_EQUALS("a review type", reviewRelation->getTags().get(MetadataTags::HootReviewType()));
   }

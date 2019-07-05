@@ -45,9 +45,6 @@ namespace hoot
 
 class ConflictsNetworkMatcherTest;
 
-/**
- *
- */
 class ConflictsNetworkMatcher : public NetworkMatcher
 {
 public:
@@ -64,10 +61,9 @@ public:
   /**
    * Use this instead of a constructor.
    */
-  static boost::shared_ptr<ConflictsNetworkMatcher> create();
+  static std::shared_ptr<ConflictsNetworkMatcher> create();
 
-  // move to config - #2913
-  virtual double getMatchThreshold() const { return 0.35; }
+  virtual double getMatchThreshold() const { return _matchThreshold; }
 
   virtual void iterate();
 
@@ -114,10 +110,10 @@ private:
     bool _conflict;
     QSet<ConstEdgeMatchPtr> _throughStub;
   };
-  typedef boost::shared_ptr<const MatchRelationship> ConstMatchRelationshipPtr;
-  typedef boost::shared_ptr<MatchRelationship> MatchRelationshipPtr;
+  typedef std::shared_ptr<const MatchRelationship> ConstMatchRelationshipPtr;
+  typedef std::shared_ptr<MatchRelationship> MatchRelationshipPtr;
 
-  typedef QHash<ConstEdgeMatchPtr, QList<ConstMatchRelationshipPtr> > MatchRelationshipMap;
+  typedef QHash<ConstEdgeMatchPtr, QList<ConstMatchRelationshipPtr>> MatchRelationshipMap;
 
   IndexedEdgeMatchSetPtr _edgeMatches;
   EdgeScoreMap _scores, _weights;
@@ -136,6 +132,14 @@ private:
   /// A value of 0 will cause an edge to contribute (1 * score * weight) to each neighbor. A value
   /// of 1 will give approx (1 / n * score * weight) influence to each neighbor.
   double _outboundWeighting;
+
+  double _sanityCheckMinSeparationDistance;
+  double _sanityCheckSeparationDistanceMultiplier;
+  double _conflictingScoreThresholdModifier;
+
+  // This is different than the threshold used to compare individual matches...this is for comparing
+  // whole networks.
+  double _matchThreshold;
 
   MatchRelationshipMap _matchRelationships;
 
@@ -165,8 +169,8 @@ private:
   void _printEdgeMatches();
 };
 
-typedef boost::shared_ptr<ConflictsNetworkMatcher> ConflictsNetworkMatcherPtr;
-typedef boost::shared_ptr<const ConflictsNetworkMatcher> ConstConflictsNetworkMatcherPtr;
+typedef std::shared_ptr<ConflictsNetworkMatcher> ConflictsNetworkMatcherPtr;
+typedef std::shared_ptr<const ConflictsNetworkMatcher> ConstConflictsNetworkMatcherPtr;
 
 // not implemented
 bool operator<(ConstConflictsNetworkMatcherPtr, ConstConflictsNetworkMatcherPtr);

@@ -32,6 +32,7 @@
 #include <hoot/core/elements/ConstElementConsumer.h>
 #include <hoot/core/elements/ElementId.h>
 #include <hoot/core/ops/ConstOsmMapOperation.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 // Standard
 #include <set>
@@ -58,7 +59,8 @@ class OsmMap;
  * This approach is very thorough and effective, but there may be much more efficient approaches on
  * a case by case basis.
  */
-class RecursiveElementRemover : public ConstOsmMapOperation, public ConstElementConsumer
+class RecursiveElementRemover : public ConstOsmMapOperation, public ConstElementConsumer,
+  public OperationStatusInfo
 {
 public:
 
@@ -82,16 +84,22 @@ public:
   /**
    * Removes an element as defined by this object.
    */
-  virtual void apply(const boost::shared_ptr<OsmMap>& map);
+  virtual void apply(const std::shared_ptr<OsmMap>& map);
 
   virtual QString getDescription() const { return "Recursively removes elements from a map"; }
+
+  virtual QString getInitStatusMessage() const
+  { return "Removing elements..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Removed " + QString::number(_numAffected) + " elements"; }
 
 private:
 
   ElementId _eid;
   const ElementCriterion* _criterion;
 
-  void _remove(const boost::shared_ptr<OsmMap> &map, ElementId eid,
+  void _remove(const std::shared_ptr<OsmMap>& map, ElementId eid,
                const std::set<ElementId>& removeSet);
 };
 

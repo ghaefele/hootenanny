@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef DATACONVERTER_H
 #define DATACONVERTER_H
@@ -32,6 +32,8 @@
 #include <hoot/core/util/Configurable.h>
 #include <hoot/core/io/ScriptToOgrTranslator.h>
 #include <hoot/core/io/ElementCache.h>
+#include <hoot/core/util/Progress.h>
+#include <hoot/core/io/OgrReader.h>
 
 // Qt
 #include <QStringList>
@@ -50,11 +52,12 @@ class elementTranslatorThread : public QThread
 public:
 
   QString _translation;
-  QQueue<ElementPtr> * _pElementQ;
-  QMutex * _pTransFeaturesQMutex;
-  QMutex * _pInitMutex;
-  QQueue<std::pair<boost::shared_ptr<geos::geom::Geometry>, std::vector<ScriptToOgrTranslator::TranslatedFeature>>> * _pTransFeaturesQ;
-  bool * _pFinishedTranslating;
+  QQueue<ElementPtr>* _pElementQ;
+  QMutex* _pTransFeaturesQMutex;
+  QMutex* _pInitMutex;
+  QQueue<std::pair<std::shared_ptr<geos::geom::Geometry>,
+         std::vector<ScriptToOgrTranslator::TranslatedFeature>>>* _pTransFeaturesQ;
+  bool* _pFinishedTranslating;
   ElementCachePtr _pElementCache;
 };
 
@@ -67,12 +70,12 @@ public:
 
   QString _translation;
   QString _output;
-  QMutex * _pTransFeaturesQMutex;
-  QMutex * _pInitMutex;
-  QQueue<std::pair<boost::shared_ptr<geos::geom::Geometry>, std::vector<ScriptToOgrTranslator::TranslatedFeature>>> * _pTransFeaturesQ;
-  bool * _pFinishedTranslating;
+  QMutex* _pTransFeaturesQMutex;
+  QMutex* _pInitMutex;
+  QQueue<std::pair<std::shared_ptr<geos::geom::Geometry>,
+         std::vector<ScriptToOgrTranslator::TranslatedFeature>>>* _pTransFeaturesQ;
+  bool* _pFinishedTranslating;
 };
-
 
 /**
  * Converts data from one Hootenanny supported format to another
@@ -82,19 +85,20 @@ class DataConverter : public Configurable
 
 public:
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
+  static const QString JOB_SOURCE;
 
   DataConverter();
 
   virtual void setConfiguration(const Settings& conf);
 
-  void convert(const QStringList inputs, const QString output);
+  void convert(const QStringList& inputs, const QString& output);
 
-  void setTranslation(const QString translation) { _translation = translation; }
-  void setColumns(const QStringList columns) { _columns = columns; }
+  void setTranslation(const QString& translation) { _translation = translation; }
+  void setColumns(const QStringList& columns) { _columns = columns; }
   void setColsArgSpecified(const bool specified) { _colsArgSpecified = specified; }
   void setFeatureReadLimit(const int limit) { _featureReadLimit = limit; }
-  void setConvertOps(const QStringList ops) { _convertOps = ops; }
+  void setConvertOps(const QStringList& ops) { _convertOps = ops; }
 
 private:
 
@@ -104,17 +108,29 @@ private:
   int _featureReadLimit;
   QStringList _convertOps;
 
-  void _validateInput(const QStringList inputs, const QString output);
+  Progress _progress;
+  int _printLengthMax;
 
-  void _convertToOgr(const QString input, const QString output);
-  void _convertFromOgr(const QStringList inputs, const QString output);
-  void _convert(const QStringList inputs, const QString output);
-  void _exportToShapeWithCols(const QString output, const QStringList cols, OsmMapPtr map);
+  void _validateInput(const QStringList& inputs, const QString& output);
 
-  void _fillElementCache(QString inputUrl,
+  void _convertToOgr(const QString& input, const QString& output);
+  void _convertFromOgr(const QStringList& inputs, const QString& output);
+  void _convert(const QStringList& inputs, const QString& output);
+  void _exportToShapeWithCols(const QString& output, const QStringList& cols, const OsmMapPtr& map);
+
+  void _fillElementCache(const QString& inputUrl,
                          ElementCachePtr cachePtr,
-                         QQueue<ElementPtr> &workQ);
-  void _transToOgrMT(QString input, QString output);
+                         QQueue<ElementPtr>& workQ);
+  void _transToOgrMT(const QString& input, const QString& output);
+
+  /*
+   * Attempts to determine the relative weighting of each layer in an OGR data source based on
+   * feature size. If the feature size hasn't already been calculated for each layer, then a even
+   * distribution of weighting between layers is returned.
+   */
+  std::vector<float> _getOgrInputProgressWeights(OgrReader& reader, const QString& input,
+                                                 const QStringList& layers);
+  QStringList _getOgrLayersFromPath(OgrReader& reader, QString& input);
 };
 
 }

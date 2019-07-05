@@ -29,12 +29,13 @@
 
 // Hoot
 #include <hoot/core/elements/OsmMap.h>
+#include <hoot/core/conflate/network/NetworkMatcher.h>
 
 // Qt
 #include <QString>
 
-// tgs
-#include <tgs/SharedPtr.h>
+// Standard
+#include <memory>
 
 namespace hoot
 {
@@ -47,18 +48,19 @@ class OsmMapWriterFactory
 {
 public:
 
-  static boost::shared_ptr<OsmMapWriter> createWriter(QString url);
+  static std::shared_ptr<OsmMapWriter> createWriter(const QString& url);
 
-  static bool hasElementOutputStream(QString url);
+  static bool hasElementOutputStream(const QString& url);
 
-  static void write(const boost::shared_ptr<const OsmMap>& map, QString url,
-                    const bool silent = false);
+  static void write(const std::shared_ptr<const OsmMap>& map, const QString& url,
+                    const bool silent = false, const bool is_debug = false);
 
-  static QString getWriterName(const QString url);
+  static QString getWriterName(const QString& url);
 
-  static bool isSupportedFormat(const QString url);
+  static bool isSupportedFormat(const QString& url);
 
-  static void writeDebugMap(const ConstOsmMapPtr& map, const QString title = "");
+  static void writeDebugMap(const ConstOsmMapPtr& map, const QString& title = "",
+                            NetworkMatcherPtr matcher = NetworkMatcherPtr());
 
 private:
 

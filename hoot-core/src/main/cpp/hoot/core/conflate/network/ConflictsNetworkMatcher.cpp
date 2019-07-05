@@ -32,6 +32,8 @@
 #include <hoot/core/conflate/network/EdgeMatchSetFinder.h>
 #include <hoot/core/util/Factory.h>
 #include <hoot/core/util/Log.h>
+#include <hoot/core/util/ConfigOptions.h>
+#include <hoot/core/util/StringUtils.h>
 
 using namespace geos::geom;
 using namespace std;
@@ -55,6 +57,11 @@ ConflictsNetworkMatcher::ConflictsNetworkMatcher()
   _weightInfluence = conf.getNetworkConflictsWeightInfluence();
   _outboundWeighting = conf.getNetworkConflictsOutboundWeighting();
   _stubThroughWeighting = conf.getNetworkConflictsStubThroughWeighting();
+  _sanityCheckMinSeparationDistance = conf.getNetworkConflictsSanityCheckMinSeparationDistance();
+  _sanityCheckSeparationDistanceMultiplier =
+    conf.getNetworkConflictsSanityCheckSeparationDistanceMultiplier();
+  _conflictingScoreThresholdModifier = conf.getNetworkConflictsConflictingScoreThresholdModifier();
+  _matchThreshold = conf.getNetworkConflictsMatcherThreshold();
 }
 
 double ConflictsNetworkMatcher::_aggregateScores(QList<double> pairs)
@@ -83,14 +90,14 @@ QList<NetworkVertexScorePtr> ConflictsNetworkMatcher::getAllVertexScores() const
   return QList<NetworkVertexScorePtr>();
 }
 
-boost::shared_ptr<ConflictsNetworkMatcher> ConflictsNetworkMatcher::create()
+std::shared_ptr<ConflictsNetworkMatcher> ConflictsNetworkMatcher::create()
 {
-  return boost::shared_ptr<ConflictsNetworkMatcher>(new ConflictsNetworkMatcher());
+  return std::shared_ptr<ConflictsNetworkMatcher>(new ConflictsNetworkMatcher());
 }
 
 void ConflictsNetworkMatcher::_createEmptyStubEdges(OsmNetworkPtr na, OsmNetworkPtr nb)
 {
-  LOG_DEBUG("Creating stub edges...");
+  LOG_TRACE("Creating stub edges...");
 
   if (na == _n1)
   {
@@ -166,27 +173,24 @@ Meters ConflictsNetworkMatcher::_getMatchSeparation(ConstEdgeMatchPtr pMatch)
 
 void ConflictsNetworkMatcher::_sanityCheckRelationships()
 {
-  // Check our relationships for sanity...
   int ctr = 0;
   const int total = _scores.keys().size();
   int matchesRemoved = 0;
   foreach (ConstEdgeMatchPtr em, _scores.keys())
   {
-    double myDistance = _getMatchSeparation(em);
-
+    const double myDistance = _getMatchSeparation(em);
     foreach (ConstMatchRelationshipPtr r, _matchRelationships[em])
     {
-      // If it's a conflict, AND we are a lot closer, ax the other one
+      // If it's a conflict, AND we are a lot closer, axe the other one
       if (r->isConflict())
       {
-        double theirDistance = _getMatchSeparation(r->getEdge());
-
-        // move values to config - #2913
-        if (myDistance > 5.0 && myDistance * 2.5 < theirDistance)
+        const double theirDistance = _getMatchSeparation(r->getEdge());
+        if (myDistance > _sanityCheckMinSeparationDistance &&
+            ((myDistance * _sanityCheckSeparationDistanceMultiplier) < theirDistance))
         {
-          LOG_TRACE("Removing insane match: " << r->getEdge()->getUid() << " - "
-                    << theirDistance << " keeping: " << em->getUid()
-                    << " - " << myDistance);
+          LOG_TRACE(
+            "Removing insane match: " << r->getEdge()->getUid() << " - " << theirDistance <<
+            " keeping: " << em->getUid() << " - " << myDistance);
 
           // Remove match
           _edgeMatches->getAllMatches().remove(r->getEdge());
@@ -206,8 +210,9 @@ void ConflictsNetworkMatcher::_sanityCheckRelationships()
     if (ctr % 100 == 0)
     {
       PROGRESS_INFO(
-        "Sanity checked " << ctr << " / " << total << " relationships. " << matchesRemoved <<
-        " matches removed.");
+        "Sanity checked " << StringUtils::formatLargeNumber(ctr) << " / " <<
+        StringUtils::formatLargeNumber(total) << " relationships. " <<
+        StringUtils::formatLargeNumber(matchesRemoved) << " matches removed.");
     }
   }
 }
@@ -282,7 +287,7 @@ void ConflictsNetworkMatcher::_createMatchRelationships()
     // a case test pass at the expense of no other case tests failing and no decrease
     // in regression performance.  However, this seems like an important piece of logic, so we need
     // to keep in mind that this change may have to be reverted if we encounter a situation where
-    // having it disabled causes problems.
+    // having it disabled causes problems. - #3052
     //conflict += touches;
 
     LOG_VART(conflict.size());
@@ -310,8 +315,11 @@ void ConflictsNetworkMatcher::_createMatchRelationships()
       }
     }
 
-    foreach (ConstEdgeMatchPtr aSupport, support) LOG_VART(aSupport);
-    foreach (ConstEdgeMatchPtr aConflict, conflict) LOG_VART(aConflict);
+    if (Log::getInstance().getLevel() <= Log::Trace)
+    {
+      foreach (ConstEdgeMatchPtr aSupport, support) LOG_VART(aSupport);
+      foreach (ConstEdgeMatchPtr aConflict, conflict) LOG_VART(aConflict);
+    }
 
     _scores[em] = 1.0;
     _weights[em] = 1.0;
@@ -320,7 +328,9 @@ void ConflictsNetworkMatcher::_createMatchRelationships()
     if (count % 1000 == 0)
     {
       PROGRESS_INFO(
-        count << " / " << _edgeMatches->getAllMatches().size() << " match relationships processed.");
+        StringUtils::formatLargeNumber(count) << " / " <<
+        StringUtils::formatLargeNumber(_edgeMatches->getAllMatches().size()) <<
+        " match relationships processed.");
     }
   }
 
@@ -403,7 +413,7 @@ void ConflictsNetworkMatcher::_iterateRank()
   const double partialHandicap = 0.5;
   EdgeScoreMap newScores;
   LOG_VART(_scores.size());
-  foreach(ConstEdgeMatchPtr em, _scores.keys())
+  foreach (ConstEdgeMatchPtr em, _scores.keys())
   {
     LOG_VART(em->containsPartial());
     LOG_VART(em->containsStub());
@@ -412,7 +422,7 @@ void ConflictsNetworkMatcher::_iterateRank()
       em->containsPartial() || em->containsStub() ? _scores[em] * partialHandicap : _scores[em];
     double denominator = numerator;
 
-    foreach(ConstMatchRelationshipPtr r, _matchRelationships[em])
+    foreach (ConstMatchRelationshipPtr r, _matchRelationships[em])
     {
       LOG_VART(r->getEdge()->containsPartial());
 
@@ -466,7 +476,7 @@ void ConflictsNetworkMatcher::_iterateSimple()
 
   // go through all matches
   const int total = _scores.keys().size();
-  foreach(ConstEdgeMatchPtr em, _scores.keys())
+  foreach (ConstEdgeMatchPtr em, _scores.keys())
   {
     double handicap = pow(partialHandicap, em->countPartialMatches());
     LOG_VART(em);
@@ -483,7 +493,7 @@ void ConflictsNetworkMatcher::_iterateSimple()
     double denominator = numerator;
     LOG_VART(numerator);
 
-    foreach(ConstMatchRelationshipPtr r, _matchRelationships[em])
+    foreach (ConstMatchRelationshipPtr r, _matchRelationships[em])
     {
       double childHandicap = pow(partialHandicap, r->getEdge()->countPartialMatches());
       LOG_VART(r->getEdge());
@@ -499,9 +509,9 @@ void ConflictsNetworkMatcher::_iterateSimple()
       // if r contains at least one line in em and em doesn't contain an edge string in r
       // (overlapping, but not completely contained)
       if ((r->getEdge()->getString1()->contains(em->getString1()) ||
-        r->getEdge()->getString2()->contains(em->getString2())) &&
-        !(em->getString1()->contains(r->getEdge()->getString1()) ||
-        em->getString2()->contains(r->getEdge()->getString2())))
+           r->getEdge()->getString2()->contains(em->getString2())) &&
+          !(em->getString1()->contains(r->getEdge()->getString1()) ||
+            em->getString2()->contains(r->getEdge()->getString2())))
       {
         childHandicap *= 1.5;
         LOG_VART(childHandicap);
@@ -587,12 +597,13 @@ void ConflictsNetworkMatcher::_iterateSimple()
     count++;
     if (count % 1000 == 0)
     {
-      PROGRESS_INFO(count << " / " << total << " matches processed.");
+      PROGRESS_INFO(
+        StringUtils::formatLargeNumber(count) << " / " << StringUtils::formatLargeNumber(total) <<
+        " matches processed.");
     }
   }
 
   // Setting this really helps reduce scoring oscillation
-  _weightInfluence = 0.68; // move to config - #2913
   foreach (ConstEdgeMatchPtr em, newWeights.keys())
   {
     newWeights[em] = pow(newWeights[em] * newWeights.size() / weightSum, _weightInfluence);
@@ -642,10 +653,10 @@ void ConflictsNetworkMatcher::finalize()
       const double myScore = _scores[em];
       const double theirScore = _scores[r->getEdge()];
 
-      // If it's a conflict, AND we score a lot better, ax the other one
+      // If it's a conflict, AND we score a lot better, axe the other one
       if (r->isConflict())
       {
-        if (myScore > 0.3 + theirScore) // move score value to config - #2913
+        if (myScore > (_conflictingScoreThresholdModifier + theirScore))
         {
           _scores[r->getEdge()] = 1.0e-5;
         }
@@ -690,7 +701,7 @@ void ConflictsNetworkMatcher::_seedEdgeScores()
 
       const double score = _details->getPartialEdgeMatchScore(e1, e2);
       LOG_TRACE("partial edge match score:" << score);
-      if (score > 0)
+      if (score > 0.0)
       {
         // Add all the EdgeMatches that are seeded with this edge pair.
         finder.addEdgeMatches(e1, e2);
@@ -700,53 +711,59 @@ void ConflictsNetworkMatcher::_seedEdgeScores()
     count++;
     if (count % 100 == 0)
     {
+      // Strangely, PROGRESS_INFO doesn't log one per line once StringUtils::formatLargeNumber gets
+      // added here...
+//      PROGRESS_INFO(
+//        StringUtils::formatLargeNumber(count) << " / " <<
+//        StringUtils::formatLargeNumber(em.size()) << " edge match scores processed. " <<
+//        StringUtils::formatLargeNumber(finder.getNumSimilarEdgeMatches()) <<
+//        " duplicate edge matches removed.");
       PROGRESS_INFO(
         count << " / " << em.size() << " edge match scores processed. " <<
         finder.getNumSimilarEdgeMatches() << " duplicate edge matches removed.");
     }
   }
-  LOG_TRACE("Removed " << finder.getNumSimilarEdgeMatches() << " duplicate edge matches.");
 
-  if (Log::getInstance().getLevel() <= Log::Trace)
-  {
-    _printEdgeMatches();
-  }
+  _printEdgeMatches();
 }
 
 void ConflictsNetworkMatcher::_printEdgeMatches()
 {
-  stringstream ss;
-  foreach (ConstEdgeMatchPtr em, _edgeMatches->getAllMatches().keys())
+  if (Log::getInstance().getLevel() <= Log::Trace)
   {
-    foreach (EdgeString::EdgeEntry edge, em->getString1()->getAllEdges())
+    stringstream ss;
+    foreach (ConstEdgeMatchPtr em, _edgeMatches->getAllMatches().keys())
     {
-      foreach (ConstElementPtr elmnt, edge.getSubline()->getStart()->getEdge()->getMembers())
+      foreach (EdgeString::EdgeEntry edge, em->getString1()->getAllEdges())
       {
-        if (elmnt->getElementType() == ElementType::Way)
+        foreach (ConstElementPtr elmnt, edge.getSubline()->getStart()->getEdge()->getMembers())
         {
-          ss << "(way:" << elmnt->getId() << ")";
+          if (elmnt->getElementType() == ElementType::Way)
+          {
+            ss << "(way:" << elmnt->getId() << ")";
+          }
         }
       }
-    }
 
-    ss << " <<matches>> ";
-    foreach (EdgeString::EdgeEntry edge, em->getString2()->getAllEdges())
-    {
-      foreach (ConstElementPtr elmnt, edge.getSubline()->getStart()->getEdge()->getMembers())
+      ss << " <<matches>> ";
+      foreach (EdgeString::EdgeEntry edge, em->getString2()->getAllEdges())
       {
-        if (elmnt->getElementType() == ElementType::Way)
+        foreach (ConstElementPtr elmnt, edge.getSubline()->getStart()->getEdge()->getMembers())
         {
-          ss << "(way:" << elmnt->getId() << ")";
+          if (elmnt->getElementType() == ElementType::Way)
+          {
+            ss << "(way:" << elmnt->getId() << ")";
+          }
         }
       }
+
+      ss << std::endl;
+
+      int i = 0;
+      i++;
     }
-
-    ss << std::endl;
-
-    int i = 0;
-    i++;
+    LOG_TRACE(ss.str());
   }
-  LOG_INFO(ss.str());
 }
 
 }

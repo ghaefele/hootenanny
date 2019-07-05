@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "SetTagValueVisitor.h"
 
@@ -44,8 +44,8 @@ SetTagValueVisitor::SetTagValueVisitor()
   setConfiguration(conf());
 }
 
-SetTagValueVisitor::SetTagValueVisitor(QString key, QString value, bool appendToExistingValue,
-                                       const QString criterionName, bool overwriteExistingTag,
+SetTagValueVisitor::SetTagValueVisitor(const QString& key, const QString& value, bool appendToExistingValue,
+                                       const QString& criterionName, bool overwriteExistingTag,
                                        bool negateCriterion) :
 _appendToExistingValue(appendToExistingValue),
 _overwriteExistingTag(overwriteExistingTag),
@@ -54,12 +54,6 @@ _negateCriterion(negateCriterion)
   _k.append(key);
   _v.append(value);
   _setCriterion(criterionName);
-
-  LOG_VART(_k);
-  LOG_VART(_v);
-  LOG_VART(_appendToExistingValue);
-  LOG_VART(_overwriteExistingTag);
-  LOG_VART(_negateCriterion);
 }
 
 void SetTagValueVisitor::setConfiguration(const Settings& conf)
@@ -75,12 +69,6 @@ void SetTagValueVisitor::setConfiguration(const Settings& conf)
   _overwriteExistingTag = configOptions.getSetTagValueVisitorOverwrite();
   _negateCriterion = configOptions.getElementCriterionNegate();
   _setCriterion(configOptions.getSetTagValueVisitorElementCriterion());
-
-  LOG_VART(_k);
-  LOG_VART(_v);
-  LOG_VART(_appendToExistingValue);
-  LOG_VART(_overwriteExistingTag);
-  LOG_VART(_negateCriterion);
 }
 
 void SetTagValueVisitor::addCriterion(const ElementCriterionPtr& e)
@@ -95,18 +83,18 @@ void SetTagValueVisitor::addCriterion(const ElementCriterionPtr& e)
   }
 }
 
-void SetTagValueVisitor::_setCriterion(const QString criterionName)
+void SetTagValueVisitor::_setCriterion(const QString& criterionName)
 {
   if (!criterionName.trimmed().isEmpty())
   {
     LOG_VART(criterionName);
     addCriterion(
-      boost::shared_ptr<ElementCriterion>(
+      std::shared_ptr<ElementCriterion>(
         Factory::getInstance().constructObject<ElementCriterion>(criterionName.trimmed())));
   }
 }
 
-void SetTagValueVisitor::_setTag(const ElementPtr& e, QString k, QString v)
+void SetTagValueVisitor::_setTag(const ElementPtr& e, const QString& k, const QString& v)
 {
   if (k.isEmpty())
   {
@@ -154,9 +142,10 @@ void SetTagValueVisitor::_setTag(const ElementPtr& e, QString k, QString v)
     LOG_VART(v);
     LOG_VART(e->getTags()[k]);
   }
+  _numAffected++;
 }
 
-void SetTagValueVisitor::visit(const boost::shared_ptr<Element>& e)
+void SetTagValueVisitor::visit(const std::shared_ptr<Element>& e)
 {
   for (int i = 0; i < _k.size(); i++)
   {

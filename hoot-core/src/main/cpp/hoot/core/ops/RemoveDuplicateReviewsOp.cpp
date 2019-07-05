@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "RemoveDuplicateReviewsOp.h"
 
@@ -46,13 +46,14 @@ RemoveDuplicateReviewsOp::RemoveDuplicateReviewsOp()
 {
 }
 
-void RemoveDuplicateReviewsOp::apply(boost::shared_ptr<OsmMap>& map)
+void RemoveDuplicateReviewsOp::apply(std::shared_ptr<OsmMap>& map)
 {
+  _numAffected = 0;
   _map = map;
 
   // go through all the relations to get duplicate reviews
   const RelationMap& relations = map->getRelations();
-  QMap< set<ElementId>, QList<ReviewMarker::ReviewUid> > membersToReview;
+  QMap<set<ElementId>, QList<ReviewMarker::ReviewUid>> membersToReview;
   for (RelationMap::const_iterator it = relations.begin(); it != relations.end(); ++it)
   {
     ElementId eid = ElementId::relation(it->first);
@@ -65,7 +66,7 @@ void RemoveDuplicateReviewsOp::apply(boost::shared_ptr<OsmMap>& map)
 
   //loop through duplicate reviews
   ReviewMarker reviewMarker;
-  QMap< set<ElementId>, QList<ReviewMarker::ReviewUid> >::iterator it = membersToReview.begin();
+  QMap<set<ElementId>, QList<ReviewMarker::ReviewUid>>::iterator it = membersToReview.begin();
   while (it != membersToReview.end())
   {
     set<ElementId> eids = it.key();
@@ -83,12 +84,13 @@ void RemoveDuplicateReviewsOp::apply(boost::shared_ptr<OsmMap>& map)
       for (int i = 0; i < duplicateReviews.size(); i++)
       {
         ReviewMarker::removeElement(map, duplicateReviews[i]);
+        _numAffected++;
       }
 
       ElementId beid = *eids.begin();
       ElementId eeid = *eids.rbegin();
 
-      boost::shared_ptr<OsmMap> copy(new OsmMap());
+      std::shared_ptr<OsmMap> copy(new OsmMap());
       CopyMapSubsetOp(map, beid, eeid).apply(copy);
       copy->getElement(beid)->setStatus(Status::Unknown1);
       copy->getElement(eeid)->setStatus(Status::Unknown2);

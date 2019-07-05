@@ -28,9 +28,6 @@
 #ifndef WAYJOINER2_H
 #define WAYJOINER2_H
 
-// TGS
-#include <tgs/SharedPtr.h>
-
 // Hoot
 #include <hoot/core/elements/OsmMap.h>
 #include <hoot/core/elements/Way.h>
@@ -137,8 +134,6 @@ private:
   bool _handleOneWayStreetReversal(WayPtr wayWithTagsToKeep, ConstWayPtr wayWithTagsToLose);
 
   double _getTotalLengthFromTags(const Tags& tags1, const Tags& tags2) const;
-
-  void _removeHootCreatedMultiLineStringRelations(const OsmMapPtr& map);
 };
 
 }

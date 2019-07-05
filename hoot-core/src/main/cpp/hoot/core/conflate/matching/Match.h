@@ -59,7 +59,7 @@ public:
   virtual ~Match();
 
   virtual QString explain() const;
-  virtual void setExplain(const QString /*explainText*/){ }
+  virtual void setExplain(const QString& /*explainText*/){ }
 
   /**
    * Classifies the match and returns a classification object.
@@ -127,7 +127,7 @@ public:
    * In general Unknown1 should be the status of the first element and Unknown2 the status of the
    * second element.
    */
-  virtual std::set< std::pair<ElementId, ElementId> > getMatchPairs() const = 0;
+  virtual std::set<std::pair<ElementId, ElementId>> getMatchPairs() const = 0;
 
   virtual QString toString() const = 0;
 
@@ -146,7 +146,7 @@ protected:
    * All of this order silliness maintains a consistent ordering of matches when they're placed
    * into a set as pointers.
    */
-  Match(const boost::shared_ptr<const MatchThreshold> threshold) :
+  Match(const std::shared_ptr<const MatchThreshold>& threshold) :
     _order(_orderCount++), _threshold(threshold) {}
 
   friend class MatchPtrComparator;
@@ -154,7 +154,7 @@ protected:
   static long _orderCount;
   long _order;
 
-  const boost::shared_ptr<const MatchThreshold> _threshold;
+  const std::shared_ptr<const MatchThreshold> _threshold;
 };
 
 inline std::ostream& operator<<(std::ostream & o, const Match* m)

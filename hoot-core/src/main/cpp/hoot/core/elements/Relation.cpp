@@ -50,7 +50,7 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int Relation::logWarnCount = 0;
+int Relation::logWarnCount = 0;
 
 /**
  * This is a convenience class to handle cases when exceptions are thrown.
@@ -92,7 +92,7 @@ Relation::Relation(const Relation& from)
 {
 }
 
-void Relation::addElement(const QString& role, const boost::shared_ptr<const Element>& e)
+void Relation::addElement(const QString& role, const std::shared_ptr<const Element>& e)
 {
   addElement(role, e->getElementType(), e->getId());
 }
@@ -132,7 +132,7 @@ bool Relation::contains(ElementId eid) const
   return false;
 }
 
-int Relation::numElementsByRole(const QString role) const
+int Relation::numElementsByRole(const QString& role) const
 {
   const vector<RelationData::Entry>& members = getMembers();
   int roleCtr = 0;
@@ -146,13 +146,15 @@ int Relation::numElementsByRole(const QString role) const
   return roleCtr;
 }
 
-Envelope* Relation::getEnvelope(const boost::shared_ptr<const ElementProvider>& ep) const
+Envelope* Relation::getEnvelope(const std::shared_ptr<const ElementProvider>& ep) const
 {
   return new Envelope(getEnvelopeInternal(ep));
 }
 
-Envelope Relation::getEnvelopeInternal(const boost::shared_ptr<const ElementProvider>& ep) const
+Envelope Relation::getEnvelopeInternal(const std::shared_ptr<const ElementProvider>& ep) const
 {
+  LOG_VART(ep.get());
+
   Envelope result;
   result.init();
 
@@ -166,15 +168,18 @@ Envelope Relation::getEnvelopeInternal(const boost::shared_ptr<const ElementProv
     // if any of the elements don't exist then return an empty envelope.
     if (ep->containsElement(m.getElementId()) == false)
     {
+      LOG_TRACE(m.getElementId() << " missing.  Returning empty envelope...");
       result.setToNull();
       return result;
     }
 
-    const boost::shared_ptr<const Element> e = ep->getElement(m.getElementId());
-    boost::shared_ptr<Envelope> childEnvelope(e->getEnvelope(ep));
+    const std::shared_ptr<const Element> e = ep->getElement(m.getElementId());
+    LOG_VART(e.get())
+    std::shared_ptr<Envelope> childEnvelope(e->getEnvelope(ep));
 
     if (childEnvelope->isNull())
     {
+      LOG_TRACE("Child envelope for " << m.getElementId() << " null.  Returning empty envelope...");
       result.setToNull();
       return result;
     }
@@ -182,6 +187,7 @@ Envelope Relation::getEnvelopeInternal(const boost::shared_ptr<const ElementProv
     result.expandToInclude(childEnvelope.get());
   }
 
+  LOG_VART(result);
   return result;
 }
 
@@ -194,7 +200,7 @@ void Relation::_makeWritable()
   }
 }
 
-void Relation::removeElement(const QString& role, const boost::shared_ptr<const Element>& e)
+void Relation::removeElement(const QString& role, const std::shared_ptr<const Element>& e)
 {
   removeElement(role, e->getElementId());
 }
@@ -215,8 +221,8 @@ void Relation::removeElement(ElementId eid)
   _postGeometryChange();
 }
 
-void Relation::replaceElement(const boost::shared_ptr<const Element>& from,
-  const boost::shared_ptr<const Element> &to)
+void Relation::replaceElement(const std::shared_ptr<const Element>& from,
+  const std::shared_ptr<const Element> &to)
 {
   _preGeometryChange();
   _makeWritable();
@@ -354,7 +360,7 @@ void Relation::_visitRw(ElementProvider& map, ConstElementVisitor& filter,
 
   AddToVisitedRelationsList addTo(visitedRelations, getId());
 
-  filter.visit(boost::dynamic_pointer_cast<const Relation>(map.getRelation(getId())));
+  filter.visit(std::dynamic_pointer_cast<const Relation>(map.getRelation(getId())));
 
   const vector<RelationData::Entry>& members = getMembers();
 

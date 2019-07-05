@@ -22,15 +22,13 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef ELEMENTTORELATIONMAP_H
 #define ELEMENTTORELATIONMAP_H
 
-// Boost
-#include <boost/shared_ptr.hpp>
-
 // Standard
+#include <memory>
 #include <set>
 
 // Tgs
@@ -53,12 +51,13 @@ class Element;
 class ElementToRelationMap
 {
 public:
+
   ElementToRelationMap();
 
   /**
    * Recursively traverses the relation and adds all child elements to the reference.
    */
-  void addRelation(const OsmMap& map, const boost::shared_ptr<const Relation>& r);
+  void addRelation(const OsmMap& map, const std::shared_ptr<const Relation>& r);
 
   /**
    * Returns a set of relation ids that have the specified element as a member, explicity or
@@ -67,14 +66,14 @@ public:
    * (ElementType::Way, 3) you will get both the multipolygon and the building relation.
    */
   const std::set<long>& getRelationByElement(ElementId eid) const;
-  const std::set<long>& getRelationByElement(const boost::shared_ptr<const Element>& e) const;
+  const std::set<long>& getRelationByElement(const std::shared_ptr<const Element>& e) const;
   const std::set<long>& getRelationByElement(const Element* e) const;
 
   /**
    * This function assumes that the elements that make up the relation haven't changed since it was
    * last added.
    */
-  void removeRelation(const OsmMap &map, const boost::shared_ptr<const Relation> &r);
+  void removeRelation(const OsmMap &map, const std::shared_ptr<const Relation>& r);
 
   /**
    * Checks to make sure the index is consistent with the specified map. All inconsistencies are
@@ -83,10 +82,12 @@ public:
    */
   bool validate(const OsmMap& map) const;
 
+  size_t size() const { return _mapping.size(); }
+
 private:
 
   std::set<long> _emptySet;
-  HashMap< ElementId, std::set<long> > _mapping;
+  HashMap<ElementId, std::set<long>> _mapping;
 };
 
 }

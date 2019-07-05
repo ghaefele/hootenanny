@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "AreaCriterion.h"
 
@@ -68,7 +68,7 @@ bool AreaCriterion::isSatisfied(const Tags& tags, const ElementType& elementType
     uint16_t g = tv.geometries;
     if (g & OsmGeometries::Area && !(g & (OsmGeometries::LineString | OsmGeometries::ClosedWay)))
     {
-      //LOG_VERBOSE("Area: " << it.key() << "=" << it.value());
+      //LOG_TRACE("Area: " << it.key() << "=" << it.value());
       result = true;
       break;
     }

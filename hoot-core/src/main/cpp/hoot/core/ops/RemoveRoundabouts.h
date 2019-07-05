@@ -31,11 +31,14 @@
 // Hoot
 #include <hoot/core/ops/OsmMapOperation.h>
 #include <hoot/core/conflate/highway/Roundabout.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 // Qt
 #include <QMultiHash>
 #include <QSet>
 #include <QMap>
+
+// Standard
 #include <vector>
 
 namespace hoot
@@ -53,7 +56,7 @@ class Way;
  * Note that it is pretty important to run this operation before doing
  * some other things to the map, like splitting intersections!
  */
-class RemoveRoundabouts : public OsmMapOperation
+class RemoveRoundabouts : public OsmMapOperation, public OperationStatusInfo
 {
 public:
 
@@ -72,9 +75,8 @@ public:
    * @brief apply - Apply the RemoveRoundabouts op
    * @param pMap - Target map
    */
-  void apply(boost::shared_ptr<OsmMap>& pMap) override;
+  void apply(std::shared_ptr<OsmMap>& pMap) override;
 
-  // Remove roundabouts, store them, replace them with simple intersections
   /**
    * @brief removeRoundabouts - Remove roundabouts, store the, replace them
    *                            with simple intersections
@@ -84,9 +86,15 @@ public:
 
   virtual QString getDescription() const override { return "Removes roundabouts from roads"; }
 
+  virtual QString getInitStatusMessage() const
+  { return "Removing road roundabouts..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Removed " + QString::number(_numAffected) + " road roundabouts"; }
+
 private:
 
-  boost::shared_ptr<OsmMap> _pMap;
+  std::shared_ptr<OsmMap> _pMap;
   std::vector<long> _todoWays;
 };
 

@@ -65,10 +65,11 @@ DuplicateWayRemover::DuplicateWayRemover()
 
 void DuplicateWayRemover::apply(OsmMapPtr& map)
 {
+  _numAffected = 0;
   _map = map;
 
   // create a map from nodes to ways
-  boost::shared_ptr<NodeToWayMap> n2wp = _map->getIndex().getNodeToWayMap();
+  std::shared_ptr<NodeToWayMap> n2wp = _map->getIndex().getNodeToWayMap();
   NodeToWayMap& n2w = *n2wp;
 
   WayMap wm = _map->getWays();

@@ -31,6 +31,7 @@
 // hoot
 #include <hoot/core/visitors/ToEnglishTranslationVisitor.h>
 #include <hoot/core/algorithms/string/StringDistance.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 namespace hoot
 {
@@ -48,12 +49,22 @@ public:
 
   ToEnglishTranslationComparisonVisitor();
 
-  virtual void visit(const boost::shared_ptr<Element>& e) override;
+  virtual void visit(const std::shared_ptr<Element>& e) override;
 
   virtual void setConfiguration(const Settings& conf);
 
   virtual QString getDescription() const override
   { return "Translates selected tags to English and scores them against known translations"; }
+
+  virtual QString getInitStatusMessage() const
+  { return "Comparing to English tag translations..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  {
+    return
+      "Compared " + QString::number(_numProcessedTags) + " to English tag translations on " +
+      QString::number(_numProcessedElements) + " different elements";
+  }
 
 private:
 
@@ -63,6 +74,7 @@ private:
   QStringList _tagKeysAsList;
   QStringList _preTranslatedTagKeys;
   QString _preTranslatedVal;
+  long _numTagsCompared;
 };
 
 }

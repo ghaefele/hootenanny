@@ -61,7 +61,7 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int HootApiDb::logWarnCount = 0;
+int HootApiDb::logWarnCount = 0;
 
 HootApiDb::HootApiDb() :
 _precision(ConfigOptions().getWriterPrecision()),
@@ -108,6 +108,11 @@ void HootApiDb::_init()
   _currChangesetId = -1;
   _changesetEnvelope.init();
   _changesetChangeCount = 0;
+
+  //  Set the max node/way/relation IDs to negative for updating sequences after inserts
+  _maxInsertNodeId = -1;
+  _maxInsertWayId = -1;
+  _maxInsertRelationId = -1;
 }
 
 Envelope HootApiDb::calculateEnvelope() const
@@ -221,7 +226,7 @@ void HootApiDb::commit()
   }
 }
 
-void HootApiDb::_copyTableStructure(QString from, QString to)
+void HootApiDb::_copyTableStructure(const QString& from, const QString& to)
 {
   // inserting strings in this fashion is safe b/c it is private and we closely control the table
   // names.
@@ -830,6 +835,9 @@ bool HootApiDb::insertNode(const long id, const double lat, const double lon, co
   LOG_VART(QString::number(lat, 'g', _precision))
   LOG_VART(QString::number(lon, 'g', _precision));
 
+  //  Update the max node id
+  _maxInsertNodeId = max(_maxInsertNodeId, id);
+
   return true;
 }
 
@@ -909,6 +917,9 @@ bool HootApiDb::insertRelation(const long relationId, const Tags &tags)
   _lazyFlushBulkInsert();
 
   LOG_TRACE("Inserted relation: " << ElementId(ElementType::Relation, relationId));
+
+  //  Update the max relation id
+  _maxInsertRelationId = max(_maxInsertRelationId, relationId);
 
   return true;
 }
@@ -1152,6 +1163,8 @@ void HootApiDb::_resetQueries()
   _wayNodeBulkInsert.reset();
   _wayBulkInsert.reset();
   _wayIdReserver.reset();
+
+  _updateIdSequence.reset();
 }
 
 long HootApiDb::getMapIdFromUrl(const QUrl& url)
@@ -1472,7 +1485,7 @@ void HootApiDb::_deleteAllFolders(const set<long>& folderIds)
   _deleteFolders->finish();
 }
 
-long HootApiDb::insertFolder(const QString displayName, const long parentId, const long userId,
+long HootApiDb::insertFolder(const QString& displayName, const long parentId, const long userId,
                              const bool isPublic)
 {
   if (_insertFolder == 0)
@@ -1543,7 +1556,7 @@ QString HootApiDb::tableTypeToTableName(const TableType& tableType) const
   }
 }
 
-bool HootApiDb::currentUserHasMapWithName(const QString mapName)
+bool HootApiDb::currentUserHasMapWithName(const QString& mapName)
 {
   LOG_VART(_currUserId);
 
@@ -1581,7 +1594,7 @@ bool HootApiDb::mapExists(const long id)
   return _mapExistsById->next();
 }
 
-bool HootApiDb::mapExists(const QString name)
+bool HootApiDb::mapExists(const QString& name)
 {
   if (_mapExistsByName == 0)
   {
@@ -1598,7 +1611,7 @@ bool HootApiDb::mapExists(const QString name)
   return _mapExistsByName->next();
 }
 
-long HootApiDb::getMapIdByName(const QString name)
+long HootApiDb::getMapIdByName(const QString& name)
 {
   //assuming unique name here
   if (_getMapIdByName == 0)
@@ -1627,7 +1640,7 @@ long HootApiDb::getMapIdByName(const QString name)
   return result;
 }
 
-long HootApiDb::getMapIdByNameForCurrentUser(const QString name)
+long HootApiDb::getMapIdByNameForCurrentUser(const QString& name)
 {
   LOG_VARD(_currUserId);
 
@@ -1717,8 +1730,8 @@ bool HootApiDb::changesetExists(const long id)
   return _changesetExists->next();
 }
 
-bool HootApiDb::accessTokensAreValid(const QString userName, const QString accessToken,
-                                     const QString accessTokenSecret)
+bool HootApiDb::accessTokensAreValid(const QString& userName, const QString& accessToken,
+                                     const QString& accessTokenSecret)
 {
   LOG_VART(userName);
   LOG_VART(accessToken);
@@ -1834,7 +1847,7 @@ QString HootApiDb::getAccessTokenSecretByUserId(const long userId)
   return accessTokenSecret;
 }
 
-void HootApiDb::insertUserSession(const long userId, const QString sessionId)
+void HootApiDb::insertUserSession(const long userId, const QString& sessionId)
 {
   if (_insertUserSession == 0)
   {
@@ -1860,8 +1873,8 @@ void HootApiDb::insertUserSession(const long userId, const QString sessionId)
   }
 }
 
-void HootApiDb::updateUserAccessTokens(const long userId, const QString accessToken,
-                                       const QString accessTokenSecret)
+void HootApiDb::updateUserAccessTokens(const long userId, const QString& accessToken,
+                                       const QString& accessTokenSecret)
 {
   if (_updateUserAccessTokens == 0)
   {
@@ -1919,8 +1932,8 @@ QString HootApiDb::getSessionIdByUserId(const long userId)
   return sessionId;
 }
 
-QString HootApiDb::getSessionIdByAccessTokens(const QString userName, const QString accessToken,
-                                              const QString accessTokenSecret)
+QString HootApiDb::getSessionIdByAccessTokens(const QString& userName, const QString& accessToken,
+                                              const QString& accessTokenSecret)
 {
   QString sessionId = "";
 
@@ -1958,7 +1971,7 @@ vector<long> HootApiDb::selectNodeIdsForWay(long wayId)
   return ApiDb::selectNodeIdsForWay(wayId, sql);
 }
 
-boost::shared_ptr<QSqlQuery> HootApiDb::selectNodesForWay(long wayId)
+std::shared_ptr<QSqlQuery> HootApiDb::selectNodesForWay(long wayId)
 {
   const long mapId = _currMapId;
   _checkLastMapId(mapId);
@@ -2175,6 +2188,9 @@ bool HootApiDb::insertWay(const long wayId, const Tags &tags)
   LOG_TRACE("Inserted way: " << ElementId(ElementType::Way, wayId));
   LOG_TRACE(tags);
 
+  //  Update the max way id
+  _maxInsertWayId = max(_maxInsertWayId, wayId);
+
   return true;
 }
 
@@ -2278,7 +2294,7 @@ QUrl HootApiDb::getBaseUrl()
   return result;
 }
 
-QString HootApiDb::removeLayerName(const QString url)
+QString HootApiDb::removeLayerName(const QString& url)
 {
   QStringList urlParts =  url.split("/");
   QString modifiedUrl;
@@ -2290,7 +2306,7 @@ QString HootApiDb::removeLayerName(const QString url)
   return modifiedUrl;
 }
 
-void HootApiDb::updateJobStatusResourceId(const QString jobId, const long resourceId)
+void HootApiDb::updateJobStatusResourceId(const QString& jobId, const long resourceId)
 {
   LOG_VARD(jobId);
   LOG_VARD(resourceId);
@@ -2314,7 +2330,7 @@ void HootApiDb::updateJobStatusResourceId(const QString jobId, const long resour
   _updateJobStatusResourceId->finish();
 }
 
-QString HootApiDb::insertJob(const QString statusDetail)
+QString HootApiDb::insertJob(const QString& statusDetail)
 {
   if (_insertJob == 0)
   {
@@ -2324,7 +2340,7 @@ QString HootApiDb::insertJob(const QString statusDetail)
       " (job_id, start, status, percent_complete, status_detail) " +
       "VALUES (:jobId, NOW(), :status, :percentComplete, :statusDetail)");
   }
-  const QString jobId = UuidHelper::createUuid();
+  const QString jobId = UuidHelper::createUuid().toString();
   _insertJob->bindValue(":jobId", jobId);
   _insertJob->bindValue(":status", (int)ServicesJobStatus::Running);
   _insertJob->bindValue(":percentComplete", 0.0);
@@ -2342,7 +2358,7 @@ QString HootApiDb::insertJob(const QString statusDetail)
   return jobId;
 }
 
-long HootApiDb::getJobStatusResourceId(const QString jobId)
+long HootApiDb::getJobStatusResourceId(const QString& jobId)
 {
   LOG_VARD(jobId);
   if (_getJobStatusResourceId == 0)
@@ -2379,7 +2395,7 @@ long HootApiDb::getJobStatusResourceId(const QString jobId)
   return resourceId;
 }
 
-void HootApiDb::_deleteJob(const QString id)
+void HootApiDb::_deleteJob(const QString& id)
 {
   if (_deleteJobById == 0)
   {
@@ -2398,6 +2414,35 @@ void HootApiDb::_deleteJob(const QString id)
     throw HootException(err);
   }
   _deleteJobById->finish();
+}
+
+void HootApiDb::updateImportSequences()
+{
+  if (_maxInsertNodeId > 0)
+    _updateImportSequence(_maxInsertNodeId, getCurrentNodesSequenceName(_currMapId));
+  if (_maxInsertWayId > 0)
+    _updateImportSequence(_maxInsertWayId, getCurrentWaysSequenceName(_currMapId));
+  if (_maxInsertRelationId > 0)
+    _updateImportSequence(_maxInsertRelationId, getCurrentRelationsSequenceName(_currMapId));
+}
+
+void HootApiDb::_updateImportSequence(long max, const QString& sequence)
+{
+  LOG_TRACE("Updating sequence " << sequence);
+  if (!_updateIdSequence)
+  {
+    _updateIdSequence.reset(new QSqlQuery(_db));
+  }
+  if (!_updateIdSequence->exec(QString("ALTER SEQUENCE %1 RESTART %2").arg(sequence).arg(max + 1)))
+  {
+    const QString err =
+      QString("Error executing query: %1 (%2)")
+        .arg(_updateIdSequence->executedQuery())
+        .arg(_updateIdSequence->lastError().text());
+    LOG_TRACE(err);
+    throw HootException(err);
+  }
+  _updateIdSequence->finish();
 }
 
 }

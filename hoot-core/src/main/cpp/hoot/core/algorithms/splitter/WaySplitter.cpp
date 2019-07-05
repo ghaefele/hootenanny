@@ -112,8 +112,7 @@ WayPtr WaySplitter::createSubline(const WaySubline& subline, vector<WayPtr>& scr
   return splits[1];
 }
 
-vector<WayPtr> WaySplitter::split(const OsmMapPtr& map, WayPtr a,
-  WayLocation& splitPoint)
+vector<WayPtr> WaySplitter::split(const OsmMapPtr& map, WayPtr a, WayLocation& splitPoint)
 {
   WaySplitter s(map, a);
   return s.split(splitPoint);
@@ -121,7 +120,7 @@ vector<WayPtr> WaySplitter::split(const OsmMapPtr& map, WayPtr a,
 
 void WaySplitter::split(const OsmMapPtr& map, const WayPtr& w, double maxSize)
 {
-  boost::shared_ptr<LineString> ls = ElementConverter(map).convertToLineString(w);
+  std::shared_ptr<LineString> ls = ElementConverter(map).convertToLineString(w);
 
   double l = ls->getLength();
 

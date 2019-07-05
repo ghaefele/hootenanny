@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #ifndef __TGS__HILBERT_R_TREE_H__
@@ -42,7 +42,7 @@ namespace Tgs
   {
   public:
 
-    HilbertRTree(boost::shared_ptr<PageStore> ps, int dimensions);
+    HilbertRTree(const std::shared_ptr<PageStore>& ps, int dimensions);
 
     virtual ~HilbertRTree();
 
@@ -59,15 +59,16 @@ namespace Tgs
     class UserBoxHolder
     {
     public:
+
       const Box* box;
       int fid;
       int hilbertValue;
 
       UserBoxHolder(const Box& b, int f, int hv) :
-        box(&b)
+        box(&b),
+        fid(f),
+        hilbertValue(hv)
       {
-        fid = f;
-        hilbertValue = hv;
       }
 
       bool operator<(const UserBoxHolder& b) const
@@ -113,8 +114,8 @@ namespace Tgs
     double _swapGrandChildNodes(int parentId, const std::vector<double>& overlaps);
   };
 
-  typedef boost::shared_ptr<HilbertRTree> HilbertRTreePtr;
-  typedef boost::shared_ptr<const HilbertRTree> ConstHilbertRTreePtr;
+  typedef std::shared_ptr<HilbertRTree> HilbertRTreePtr;
+  typedef std::shared_ptr<const HilbertRTree> ConstHilbertRTreePtr;
 }
 
 

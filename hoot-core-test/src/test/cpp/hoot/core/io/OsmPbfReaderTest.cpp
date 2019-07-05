@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2012, 2013, 2014, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2012, 2013, 2014, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 // Hoot
@@ -77,24 +77,19 @@ class OsmPbfReaderTest : public HootTestFixture
 public:
 
   OsmPbfReaderTest()
+    : HootTestFixture("test-files/io/",
+                      "test-output/io/")
   {
     setResetType(ResetAll);
-    TestUtils::mkpath("test-output/io/");
   }
 
   void runOffsetsTest()
   {
     OsmPbfReader uut(false);
-    fstream input("test-files/io/SmallSplits.pbf", ios::in | ios::binary);
+    fstream input(_inputPath.toStdString() + "SmallSplits.pbf", ios::in | ios::binary);
     OsmMapPtr map(new OsmMap());
 
     vector<OsmPbfReader::BlobLocation> v = uut.loadOsmDataBlobOffsets(input);
-
-//    for (size_t i = 0; i < v.size(); i++)
-//    {
-//      printf("CPPUNIT_ASSERT_EQUAL(%dl, v[%d].blobOffset);\n", v[i].blobOffset, i);
-//      printf("CPPUNIT_ASSERT_EQUAL(%dl, v[%d].blobSize);\n", v[i].blobSize, i);
-//    }
 
     CPPUNIT_ASSERT_EQUAL((size_t)12, v.size());
 
@@ -168,7 +163,7 @@ public:
     reader.setUseFileStatus(true);
     reader.parse(&ss, map);
 
-    string expected("note = test tag\nhello = world\nhighway = road\n");
+    string expected("highway = road\nnote = test tag\nhello = world\n");
     CPPUNIT_ASSERT_EQUAL(2, (int)map->getNodes().size());
     CPPUNIT_ASSERT_EQUAL(2, (int)map->getWays().size());
     CPPUNIT_ASSERT_EQUAL(expected, map->getWay(42)->getTags().toString().toStdString());
@@ -241,7 +236,7 @@ public:
                     "{\"type\":\"node\",\"ref\":2,\"role\":\"t\"},\n"
                     "{\"type\":\"node\",\"ref\":3,\"role\":\"u\"},\n"
                     "{\"type\":\"way\",\"ref\":1,\"role\":\"f\"},\n"
-                    "{\"type\":\"relation\",\"ref\":1,\"role\":\"f\"}],\"tags\":{\"note\":\"test tag\",\"hello\":\"world\",\"highway\":\"road\",\"" + MetadataTags::ErrorCircular() + "\":\"1.7\"}]\n"
+                    "{\"type\":\"relation\",\"ref\":1,\"role\":\"f\"}],\"tags\":{\"highway\":\"road\",\"note\":\"test tag\",\"hello\":\"world\",\"" + MetadataTags::ErrorCircular() + "\":\"1.7\"}]\n"
                     "}\n",
                     OsmJsonWriter().toString(map))
   }
@@ -269,7 +264,7 @@ public:
     reader.setPermissive(true);
     reader.parseElements(&ss, map);
 
-    string expected("note = test tag\nhello = world\nhighway = road\n");
+    string expected("highway = road\nnote = test tag\nhello = world\n");
     CPPUNIT_ASSERT_EQUAL(0, (int)map->getNodes().size());
     CPPUNIT_ASSERT_EQUAL(1, (int)map->getWays().size());
     CPPUNIT_ASSERT_EQUAL(expected, map->getWay(42)->getTags().toString().toStdString());
@@ -290,16 +285,16 @@ public:
 
     OsmXmlWriter writer;
     writer.setIncludeHootInfo(false);
-    writer.write(map, "test-output/io/OsmPbfReaderTest_1.osm");
+    writer.write(map, _outputPath + "OsmPbfReaderTest_1.osm");
 
-    HOOT_FILE_EQUALS("test-files/io/OsmPbfReaderTest.osm",
-                     "test-output/io/OsmPbfReaderTest_1.osm");
+    HOOT_FILE_EQUALS(_inputPath + "OsmPbfReaderTest.osm",
+                     _outputPath + "OsmPbfReaderTest_1.osm");
   }
 
   void runToyRelationTest()
   {
     OsmPbfReader uut(false);
-    fstream input("test-files/io/OsmPbfRelationTest.osm.pbf", ios::in | ios::binary);
+    fstream input(_inputPath.toStdString() + "OsmPbfRelationTest.osm.pbf", ios::in | ios::binary);
     OsmMapPtr map(new OsmMap());
     uut.parse(&input, map);
 
@@ -315,9 +310,9 @@ public:
                     "{\"type\":\"node\",\"id\":-9,\"lat\":39.5910657,\"lon\":-104.8048206},\n"
                     "{\"type\":\"node\",\"id\":-10,\"lat\":39.5910631,\"lon\":-104.8051528},\n"
                     "{\"type\":\"node\",\"id\":-11,\"lat\":39.5909403,\"lon\":-104.8037425},\n"
-                    "{\"type\":\"way\",\"id\":-3,\"nodes\":[-1,-2,-3,-4,-5,-1],\"tags\":{\"" + MetadataTags::Ref2() + "\":\"Target\",\"building\":\"yes\",\"name\":\"Target - Aurora South\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
-                    "{\"type\":\"way\",\"id\":-2,\"nodes\":[-6,-1,-5,-7,-8,-9,-10,-6],\"tags\":{\"" + MetadataTags::Ref2() + "\":\"Target\",\"building\":\"yes\",\"name\":\"Target Grocery\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
-                    "{\"type\":\"way\",\"id\":-1,\"nodes\":[-5,-4,-11,-7,-5],\"tags\":{\"" + MetadataTags::Ref2() + "\":\"Target\",\"building\":\"yes\",\"name\":\"Target Pharmacy\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
+                    "{\"type\":\"way\",\"id\":-3,\"nodes\":[-1,-2,-3,-4,-5,-1],\"tags\":{\"name\":\"Target - Aurora South\",\"building\":\"yes\",\"" + MetadataTags::Ref2() + "\":\"Target\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
+                    "{\"type\":\"way\",\"id\":-2,\"nodes\":[-6,-1,-5,-7,-8,-9,-10,-6],\"tags\":{\"name\":\"Target Grocery\",\"building\":\"yes\",\"" + MetadataTags::Ref2() + "\":\"Target\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
+                    "{\"type\":\"way\",\"id\":-1,\"nodes\":[-5,-4,-11,-7,-5],\"tags\":{\"name\":\"Target Pharmacy\",\"building\":\"yes\",\"" + MetadataTags::Ref2() + "\":\"Target\",\"" + MetadataTags::ErrorCircular() + "\":\"15\"},\n"
                     "{\"type\":\"relation\",\"id\":-1,\"members\":[\n"
                     "{\"type\":\"way\",\"ref\":-567,\"role\":\"role1\"},\n"
                     "{\"type\":\"way\",\"ref\":-569,\"role\":\"role2\"},\n"
@@ -385,10 +380,10 @@ public:
 
     OsmXmlWriter writer;
     writer.setIncludeHootInfo(false);
-    writer.write(map, "test-output/io/OsmPbfReaderTest_2.osm");
+    writer.write(map, _outputPath + "OsmPbfReaderTest_2.osm");
 
-    HOOT_FILE_EQUALS("test-files/io/OsmPbfReaderTest.osm",
-                     "test-output/io/OsmPbfReaderTest_2.osm");
+    HOOT_FILE_EQUALS( _inputPath + "OsmPbfReaderTest.osm",
+                     _outputPath + "OsmPbfReaderTest_2.osm");
   }
 
   void runFactoryReadMapTest()
@@ -398,10 +393,10 @@ public:
 
     OsmXmlWriter writer;
     writer.setIncludeHootInfo(false);
-    writer.write(map, "test-output/io/OsmPbfReaderTest_3.osm");
+    writer.write(map, _outputPath + "OsmPbfReaderTest_3.osm");
 
-    HOOT_FILE_EQUALS("test-files/io/OsmPbfReaderTest.osm",
-                     "test-output/io/OsmPbfReaderTest_3.osm");
+    HOOT_FILE_EQUALS( _inputPath + "OsmPbfReaderTest.osm",
+                     _outputPath + "OsmPbfReaderTest_3.osm");
   }
 
   void runReadMapPartialTest()
@@ -431,9 +426,9 @@ public:
         (int)(map->getNodes().size() + map->getWays().size() + map->getRelations().size()));
 
       QString outputFile(
-        "test-output/io/OsmPbfPartialReaderTest" + QString::number(ctr + 1) + ".osm");
+        _outputPath + "OsmPbfPartialReaderTest" + QString::number(ctr + 1) + ".osm");
       writer.write(map, outputFile);
-      HOOT_FILE_EQUALS("test-files/io/OsmPbfPartialReaderTest" + QString::number(ctr + 1) + ".osm",
+      HOOT_FILE_EQUALS(_inputPath + "OsmPbfPartialReaderTest" + QString::number(ctr + 1) + ".osm",
         outputFile);
 
       ctr++;
@@ -474,10 +469,10 @@ public:
         chunkSize);
 
       QString outputFile(
-        "test-output/io/OsmPbfPartialReaderMultipleBlobsTest" + QString::number(ctr + 1) + ".osm");
+        _outputPath + "OsmPbfPartialReaderMultipleBlobsTest" + QString::number(ctr + 1) + ".osm");
       writer.write(map, outputFile);
       HOOT_FILE_EQUALS(
-        "test-files/io/OsmPbfPartialReaderMultipleBlobsTest" + QString::number(ctr + 1) + ".osm",
+        _inputPath + "OsmPbfPartialReaderMultipleBlobsTest" + QString::number(ctr + 1) + ".osm",
         outputFile);
 
       ctr++;

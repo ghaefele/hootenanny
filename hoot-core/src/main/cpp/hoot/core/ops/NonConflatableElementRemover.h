@@ -22,17 +22,15 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #ifndef NONCONFLATABLEELEMENTREMOVER_H
 #define NONCONFLATABLEELEMENTREMOVER_H
 
-// TGS
-#include <tgs/SharedPtr.h>
-
 // Hoot
 #include <hoot/core/ops/OsmMapOperation.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 namespace hoot
 {
@@ -40,7 +38,7 @@ namespace hoot
 /**
  * Recursively removes all elements that are deemed non-conflatable
  */
-class NonConflatableElementRemover : public OsmMapOperation
+class NonConflatableElementRemover : public OsmMapOperation, public OperationStatusInfo
 {
 public:
 
@@ -51,13 +49,19 @@ public:
   /**
     @see OsmMapOperation
   */
-  void apply(boost::shared_ptr<OsmMap>& map);
+  void apply(std::shared_ptr<OsmMap>& map);
 
   virtual QString getDescription() const { return "Removes elements that are not conflatable"; }
 
+  virtual QString getInitStatusMessage() const
+  { return "Removing unconfaltable elements..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Removed " + QString::number(_numAffected) + " unconflatable elements"; }
+
 private:
 
-  boost::shared_ptr<OsmMap> _map;
+  std::shared_ptr<OsmMap> _map;
 };
 
 }

@@ -1,9 +1,9 @@
 Given(/^I am on Hootenanny$/) do
-  visit "http://localhost:" + (ENV['TOMCAT_PORT'] ? ENV['TOMCAT_PORT'] : "8080") + "/hootenanny-id" # may need to change URL
+  visit "http://localhost:" + (ENV['TOMCAT_PORT'] ? ENV['TOMCAT_PORT'] : "8080") + "/hootenanny-id-legacy" # may need to change URL
 end
 
 Given(/^I am on Hootenanny at location "([^"]*)"$/) do |location|
-  visit "http://localhost:" + (ENV['TOMCAT_PORT'] ? ENV['TOMCAT_PORT'] : "8080") + "/hootenanny-id/#map=" + location # may need to change URL
+  visit "http://localhost:" + (ENV['TOMCAT_PORT'] ? ENV['TOMCAT_PORT'] : "8080") + "/hootenanny-id-legacy/#map=" + location # may need to change URL
 end
 
 When(/^I click Get Started$/) do
@@ -15,8 +15,9 @@ When(/^I click Get Started$/) do
     # In Capybara 0.4+ #find_field raises an error instead of returning nil
     el = nil
   end
-  Capybara.default_max_wait_time = oldTimeout
   el.click unless el.nil?
+  page.should have_no_css('div.shaded', :visible => true)
+  Capybara.default_max_wait_time = oldTimeout
 end
 
 When(/^I click the "([^"]*)" icon$/) do |cls|
@@ -43,6 +44,13 @@ When(/^I select a node map feature with OSM id "([^"]*)"$/) do |id|
   oldTimeout = Capybara.default_max_wait_time
   Capybara.default_max_wait_time = 10
   find('div.layer-data').all('g[class*=" ' + id + '"]').last.click
+  Capybara.default_max_wait_time = oldTimeout
+end
+
+When(/^I select a node map feature ending with OSM id "([^"]*)"$/) do |id|
+  oldTimeout = Capybara.default_max_wait_time
+  Capybara.default_max_wait_time = 10
+  find('div.layer-data').all('g[class$="' + id + '"]').last.click
   Capybara.default_max_wait_time = oldTimeout
 end
 
@@ -904,16 +912,17 @@ Then(/^I wait ([0-9]+) seconds to see "([^"]*)" on the map$/) do |wait, el|
 end
 
 When(/^I click the review item column in the tag table$/) do
+  page.should have_no_css('#processingDiv', :visible => true)
   page.all('td.f1').first.click
 end
 
 Then(/^I should see a node element "([^"]*)" with a selected highlight$/) do |id|
-  el = find('div.layer-data').first('g[class*=" ' + id + '"]')
+  el = find('div.layer-data').first('g[class$="' + id + ' selected"]')
   el[:class].include?('selected').should eq true
 end
 
 Then(/^I should see element "([^"]*)" with a yellow highlight$/) do |id|
-  el = find('div.layer-data').first('g[class*=" ' + id + '"]')
+  el = find('div.layer-data').first('g[class$="' + id + ' edited unsaved"]')
   el[:class].include?('edited').should eq true
   el[:class].include?('unsaved').should eq true
 end

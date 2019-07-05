@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef DECOMPOSEBUILDINGRELATIONSVISITOR_H
 #define DECOMPOSEBUILDINGRELATIONSVISITOR_H
@@ -30,6 +30,7 @@
 // hoot
 #include <hoot/core/elements/OsmMapConsumer.h>
 #include <hoot/core/elements/ConstElementVisitor.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 namespace hoot
 {
@@ -43,13 +44,14 @@ class Relation;
  *
  * http://wiki.openstreetmap.org/wiki/Simple_3D_Buildings
  */
-class DecomposeBuildingRelationsVisitor : public ConstElementVisitor, public OsmMapConsumer
+class DecomposeBuildingRelationsVisitor : public ConstElementVisitor, public OsmMapConsumer,
+  public OperationStatusInfo
 {
 public:
 
   static std::string className() { return "hoot::DecomposeBuildingRelationsVisitor"; }
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
 
   DecomposeBuildingRelationsVisitor();
 
@@ -62,12 +64,17 @@ public:
   virtual QString getDescription() const
   { return "Decomposes complex buildings into simpler elements"; }
 
+  virtual QString getInitStatusMessage() const { return "Decomposing complex buildings..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Decomposed " + QString::number(_numAffected) + " complex buildings"; }
+
 private:
 
   OsmMap* _map;
   std::vector<long> _ids;
 
-  void _decomposeBuilding(const boost::shared_ptr<Relation>& r);
+  void _decomposeBuilding(const std::shared_ptr<Relation>& r);
 };
 
 }

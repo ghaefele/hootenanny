@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef ITERATIVENETWORKMATCHER_H
 #define ITERATIVENETWORKMATCHER_H
@@ -62,10 +62,14 @@ public:
    */
   IterativeNetworkMatcher();
 
+  // Leaving this hardcoded for now, as we don't use this matcher in production conflation jobs.
+  // If we ever do end up using it production, then add a config option for it.
+  virtual double getMatchThreshold() const { return 0.15; }
+
   /**
    * Use this instead of a constructor.
    */
-  static boost::shared_ptr<IterativeNetworkMatcher> create();
+  static std::shared_ptr<IterativeNetworkMatcher> create();
 
   void iterate();
 
@@ -89,7 +93,7 @@ private:
 
   typedef QHash<ConstEdgeMatchPtr, double> EdgeScoreMap;
   /// [row][col]
-  typedef QHash< ConstNetworkVertexPtr, QHash<ConstNetworkVertexPtr, double> > VertexScoreMap;
+  typedef QHash<ConstNetworkVertexPtr, QHash<ConstNetworkVertexPtr, double>> VertexScoreMap;
 
   /**
    * A cost function used to compare network edges. It is a simple lookup.
@@ -178,8 +182,8 @@ private:
 
 };
 
-typedef boost::shared_ptr<IterativeNetworkMatcher> IterativeNetworkMatcherPtr;
-typedef boost::shared_ptr<const IterativeNetworkMatcher> ConstIterativeNetworkMatcherPtr;
+typedef std::shared_ptr<IterativeNetworkMatcher> IterativeNetworkMatcherPtr;
+typedef std::shared_ptr<const IterativeNetworkMatcher> ConstIterativeNetworkMatcherPtr;
 
 // not implemented
 bool operator<(ConstIterativeNetworkMatcherPtr, ConstIterativeNetworkMatcherPtr);

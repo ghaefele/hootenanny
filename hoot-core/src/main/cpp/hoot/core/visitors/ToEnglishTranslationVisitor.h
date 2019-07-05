@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #ifndef TO_ENGLISH_TRANSLATION_VISITOR_H
@@ -32,6 +32,7 @@
 #include <hoot/core/util/Configurable.h>
 #include <hoot/core/elements/ElementVisitor.h>
 #include <hoot/core/language/ToEnglishTranslator.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 // Qt
 #include <QSet>
@@ -42,7 +43,8 @@ namespace hoot
 /**
  * Translates selected tag values to English
  */
-class ToEnglishTranslationVisitor : public ElementVisitor, public Configurable
+class ToEnglishTranslationVisitor : public ElementVisitor, public Configurable,
+  public OperationStatusInfo
 {
 
 public:
@@ -52,16 +54,26 @@ public:
   ToEnglishTranslationVisitor();
   virtual ~ToEnglishTranslationVisitor();
 
-  virtual void visit(const boost::shared_ptr<Element>& e);
+  virtual void visit(const std::shared_ptr<Element>& e) override;
 
-  virtual void setConfiguration(const Settings& conf);
+  virtual void setConfiguration(const Settings& conf) override;
 
-  virtual QString getDescription() const
+  virtual QString getDescription() const override
   { return "Translates selected tag values to English"; }
+
+  virtual QString getInitStatusMessage() const override
+  { return "Translating tags to English..."; }
+
+  virtual QString getCompletedStatusMessage() const override
+  {
+    return
+      "Translated " + QString::number(_numTagTranslationsMade) + " tags to English on " +
+      QString::number(_numProcessedElements) + " different elements";
+  }
 
 protected:
 
-  boost::shared_ptr<ToEnglishTranslator> _translatorClient;
+  std::shared_ptr<ToEnglishTranslator> _translatorClient;
 
   QSet<QString> _tagKeys;
   QString _toTranslateTagKey;
@@ -71,6 +83,8 @@ protected:
   bool _parseNames;
 
   long _numTotalElements;
+  long _numProcessedTags;
+  long _numProcessedElements;
 
   QString _translatedText;
 
@@ -81,7 +95,7 @@ protected:
    * @param toTranslateTagKey the key of the tag whose value is to be translated
    * @return true if a successul translation was made; false otherwise
    */
-  bool _translate(const ElementPtr& e, const QString toTranslateTagKey);
+  bool _translate(const ElementPtr& e, const QString& toTranslateTagKey);
 
 private:
 
@@ -90,8 +104,6 @@ private:
   bool _currentElementHasSuccessfulTagTranslation;
   long _numTagTranslationsMade;
   long _numElementsWithSuccessfulTagTranslation;
-  long _numProcessedTags;
-  long _numProcessedElements;
   int _taskStatusUpdateInterval;
 };
 

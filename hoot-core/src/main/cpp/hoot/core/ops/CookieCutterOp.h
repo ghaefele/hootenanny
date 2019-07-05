@@ -48,7 +48,7 @@ public:
 
   CookieCutterOp();
 
-  virtual void apply(boost::shared_ptr<OsmMap>& map) override;
+  virtual void apply(std::shared_ptr<OsmMap>& map) override;
 
   virtual std::string getClassName() const { return className(); }
 
@@ -65,7 +65,6 @@ private:
   double _alpha;
   double _alphaShapeBuffer;
   bool _crop;
-
 };
 
 }

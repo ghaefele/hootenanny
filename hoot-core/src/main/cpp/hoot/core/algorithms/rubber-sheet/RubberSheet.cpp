@@ -32,12 +32,13 @@
 #include <hoot/core/util/MapProjector.h>
 #include <hoot/core/elements/OsmMap.h>
 #include <hoot/core/elements/NodeToWayMap.h>
-#include <hoot/core/index/OsmMapIndex.h>
 #include <hoot/core/util/ConfigOptions.h>
 #include <hoot/core/util/HootException.h>
 #include <hoot/core/util/Log.h>
 #include <hoot/core/schema/MetadataTags.h>
 #include <hoot/core/visitors/WorstCircularErrorVisitor.h>
+#include <hoot/core/util/StringUtils.h>
+#include <hoot/core/index/OsmMapIndex.h>
 
 // Tgs
 #include <tgs/Statistics/Normal.h>
@@ -53,7 +54,7 @@ using namespace Tgs;
 namespace hoot
 {
 
-unsigned int RubberSheet::logWarnCount = 0;
+int RubberSheet::logWarnCount = 0;
 
 HOOT_FACTORY_REGISTER(OsmMapOperation, RubberSheet)
 
@@ -101,7 +102,7 @@ void RubberSheet::_addIntersection(long nid, const set<long>& /*wids*/)
     throw HootException("Expected either Unknown1 or Unknown2.");
   }
 
-  boost::shared_ptr<NodeToWayMap> n2w = _map->getIndex().getNodeToWayMap();
+  std::shared_ptr<NodeToWayMap> n2w = _map->getIndex().getNodeToWayMap();
   double sum = 0.0;
   list<Match>& matches = _matches[nid];
   vector<long> neighbors = _map->getIndex().findNodes(from->toCoordinate(), _searchRadius);
@@ -136,16 +137,16 @@ void RubberSheet::_addIntersection(long nid, const set<long>& /*wids*/)
   }
 }
 
-void RubberSheet::apply(boost::shared_ptr<OsmMap>& map)
+void RubberSheet::apply(std::shared_ptr<OsmMap>& map)
 {
-  boost::shared_ptr<OGRSpatialReference> oldSrs = _projection;
+  std::shared_ptr<OGRSpatialReference> oldSrs = _projection;
   calculateTransform(map);
   _projection = oldSrs;
 
   applyTransform(map);
 }
 
-void RubberSheet::applyTransform(boost::shared_ptr<OsmMap>& map)
+void RubberSheet::applyTransform(std::shared_ptr<OsmMap>& map)
 {
   _map = map;
 
@@ -193,14 +194,15 @@ void RubberSheet::applyTransform(boost::shared_ptr<OsmMap>& map)
     if (ctr % 1000 == 0)
     {
       PROGRESS_INFO(
-        "Applied rubber sheet transform to " << ctr << " / " << nm.size() << " nodes...");
+        "Applied rubber sheet transform to " << StringUtils::formatLargeNumber(ctr) << " / " <<
+        StringUtils::formatLargeNumber(nm.size()) << " nodes...");
     }
   }
 }
 
-boost::shared_ptr<DataFrame> RubberSheet::_buildDataFrame(Status s) const
+std::shared_ptr<DataFrame> RubberSheet::_buildDataFrame(Status s) const
 {
-  boost::shared_ptr<DataFrame> df(new DataFrame());
+  std::shared_ptr<DataFrame> df(new DataFrame());
   vector<string> labels;
   labels.push_back("x");
   labels.push_back("y");
@@ -246,9 +248,9 @@ boost::shared_ptr<DataFrame> RubberSheet::_buildDataFrame(Status s) const
   return df;
 }
 
-boost::shared_ptr<Interpolator> RubberSheet::_buildInterpolator(Status s) const
+std::shared_ptr<Interpolator> RubberSheet::_buildInterpolator(Status s) const
 {
-  boost::shared_ptr<DataFrame> df = _buildDataFrame(s);
+  std::shared_ptr<DataFrame> df = _buildDataFrame(s);
 
   vector<std::string> candidates;
   if (_interpolatorClassName.empty())
@@ -261,13 +263,13 @@ boost::shared_ptr<Interpolator> RubberSheet::_buildInterpolator(Status s) const
   }
 
   double bestError = numeric_limits<double>::max();
-  boost::shared_ptr<Interpolator> bestCandidate;
+  std::shared_ptr<Interpolator> bestCandidate;
   for (size_t i = 0; i < candidates.size(); i++)
   {
     PROGRESS_INFO(
-      "Running interpolator: (" << (i + 1) << " / " <<
+      "Running rubber sheet interpolator: (" << (i + 1) << " / " <<
       candidates.size() << "): " << candidates[i] << "...");
-    boost::shared_ptr<Interpolator> candidate(
+    std::shared_ptr<Interpolator> candidate(
       Factory::getInstance().constructObject<Interpolator>(candidates[i]));
     // Setting this upper limit prevents some runaway optimizations.  Those conditions should be
     // fixed as part of #2893.  The default config value was determined in a way to be high enough
@@ -310,7 +312,7 @@ boost::shared_ptr<Interpolator> RubberSheet::_buildInterpolator(Status s) const
   return bestCandidate;
 }
 
-void RubberSheet::calculateTransform(boost::shared_ptr<OsmMap>& map)
+void RubberSheet::calculateTransform(std::shared_ptr<OsmMap>& map)
 {
   _map = map;
 
@@ -330,7 +332,7 @@ void RubberSheet::_findTies()
 
   int ctr = 0;
 
-  boost::shared_ptr<NodeToWayMap> n2w = _map->getIndex().getNodeToWayMap();
+  std::shared_ptr<NodeToWayMap> n2w = _map->getIndex().getNodeToWayMap();
   // go through all the intersections w/ 2 or more roads intersecting
   for (NodeToWayMap::const_iterator it = n2w->begin(); it != n2w->end(); ++it)
   {
@@ -347,7 +349,8 @@ void RubberSheet::_findTies()
     if (ctr % 1000 == 0)
     {
       PROGRESS_INFO(
-        "Processed intersections for " << ctr << " / " << n2w->size() << " nodes...");
+        "Processed intersections for " << StringUtils::formatLargeNumber(ctr) << " / " <<
+        StringUtils::formatLargeNumber(n2w->size()) << " nodes...");
     }
   }
 
@@ -374,7 +377,8 @@ void RubberSheet::_findTies()
     if (ctr % 100 == 0)
     {
       PROGRESS_INFO(
-        "Processed paired intersections for " << ctr << " / " << _matches.size() << " matches...");
+        "Processed paired intersections for " << StringUtils::formatLargeNumber(ctr) << " / " <<
+        StringUtils::formatLargeNumber(_matches.size()) << " matches...");
     }
   }
 
@@ -431,7 +435,8 @@ void RubberSheet::_findTies()
     if (ctr % 100 == 0)
     {
       PROGRESS_INFO(
-        "Potential tie points processed: " << ctr << " / " << _finalPairs.size());
+        "Potential tie points processed: " << StringUtils::formatLargeNumber(ctr) << " / " <<
+        StringUtils::formatLargeNumber(_finalPairs.size()));
     }
   }
 
@@ -505,7 +510,7 @@ const RubberSheet::Match& RubberSheet::_findMatch(long nid1, long nid2)
   return _emptyMatch;
 }
 
-boost::shared_ptr<Interpolator> RubberSheet::_readInterpolator(QIODevice& is)
+std::shared_ptr<Interpolator> RubberSheet::_readInterpolator(QIODevice& is)
 {
   QDataStream ds(&is);
   QString projStr;
@@ -515,7 +520,7 @@ boost::shared_ptr<Interpolator> RubberSheet::_readInterpolator(QIODevice& is)
 
   QString interpolatorClass;
   ds >> interpolatorClass;
-  boost::shared_ptr<Interpolator> result;
+  std::shared_ptr<Interpolator> result;
   result.reset(Factory::getInstance().constructObject<Interpolator>(
     interpolatorClass.toStdString()));
   result->readInterpolator(is);
@@ -541,7 +546,7 @@ Coordinate RubberSheet::_translate(const Coordinate& c, Status s)
   return Coordinate(c.x + (*delta)[0], c.y + (*delta)[1]);
 }
 
-void RubberSheet::_writeInterpolator(boost::shared_ptr<const Interpolator> interpolator, QIODevice& os)
+void RubberSheet::_writeInterpolator(const std::shared_ptr<const Interpolator>& interpolator, QIODevice& os)
   const
 {
   // this could be modified to write an empty or null interpolator if needed.

@@ -22,15 +22,18 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef SPLITLONGLINEARWAYSVISITOR_H
 #define SPLITLONGLINEARWAYSVISITOR_H
 
-#include <string>
-#include <cassert>
-
+// Hoot
+#include <hoot/core/info/OperationStatusInfo.h>
 #include <hoot/core/visitors/ElementOsmMapVisitor.h>
+
+// Std
+#include <cassert>
+#include <string>
 
 namespace hoot
 {
@@ -39,13 +42,13 @@ class OsmMap;
 class Element;
 class Settings;
 
-class SplitLongLinearWaysVisitor : public ElementOsmMapVisitor
+class SplitLongLinearWaysVisitor : public ElementOsmMapVisitor, public OperationStatusInfo
 {
 public:
 
   static std::string className() { return "hoot::SplitLongLinearWaysVisitor"; }
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
 
   SplitLongLinearWaysVisitor();
 
@@ -53,12 +56,18 @@ public:
 
   virtual void setOsmMap(const OsmMap*) { assert(false); }
 
-  virtual void visit(const boost::shared_ptr<Element>& e);
+  virtual void visit(const std::shared_ptr<Element>& e);
 
   unsigned int getMaxNumberOfNodes() const { return _maxNodesPerWay; }
 
   virtual QString getDescription() const
-  { return "Splits ways containing more nodes than OSM supports"; }
+  { return "Splits ways containing a number of nodes above a specified threshold"; }
+
+  virtual QString getInitStatusMessage() const
+  { return "Splitting ways..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Split " + QString::number(_numAffected) + " ways"; }
 
 private:
 

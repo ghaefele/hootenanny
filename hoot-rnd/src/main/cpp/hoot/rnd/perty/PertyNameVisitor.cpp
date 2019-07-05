@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "PertyNameVisitor.h"
 
@@ -111,7 +111,7 @@ void PertyNameVisitor::setConfiguration(const Settings& conf)
   }
 }
 
-void PertyNameVisitor::visit(const boost::shared_ptr<Element>& e)
+void PertyNameVisitor::visit(const std::shared_ptr<Element>& e)
 {
   boost::uniform_real<> uni(0.0, 1.0);
   QStringList keys = e->getTags().getMatchingKeys(Tags::getNameKeys());
@@ -133,6 +133,7 @@ void PertyNameVisitor::visit(const boost::shared_ptr<Element>& e)
     if (change)
     {
       e->getTags().setList(k, vl);
+      _numAffected++;
     }
   }
 }

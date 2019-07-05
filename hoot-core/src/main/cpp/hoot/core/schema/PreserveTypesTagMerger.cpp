@@ -27,7 +27,6 @@
 #include "PreserveTypesTagMerger.h"
 
 // hoot
-#include <hoot/core/schema/OsmSchema.h>
 #include <hoot/core/schema/TagComparator.h>
 #include <hoot/core/util/Factory.h>
 
@@ -41,7 +40,10 @@ QString PreserveTypesTagMerger::ALT_TYPES_TAG_KEY = "alt_types";
 
 HOOT_FACTORY_REGISTER(TagMerger, PreserveTypesTagMerger)
 
-PreserveTypesTagMerger::PreserveTypesTagMerger()
+PreserveTypesTagMerger::PreserveTypesTagMerger(const std::set<QString>& skipTagKeys,
+                                               const OsmSchemaCategory& categoryFilter) :
+_skipTagKeys(skipTagKeys),
+_categoryFilter(categoryFilter)
 {
 }
 
@@ -51,8 +53,18 @@ Tags PreserveTypesTagMerger::mergeTags(const Tags& t1, const Tags& t2, ElementTy
   Tags t1Copy = t1;
   Tags t2Copy = t2;
 
-  TagComparator::getInstance().mergeNames(t1Copy, t2Copy, result);
-  TagComparator::getInstance().mergeText(t1Copy, t2Copy, result);
+  LOG_VART(ConfigOptions().getTagMergerDefault());
+  if (ConfigOptions().getTagMergerDefault() == "hoot::OverwriteTag1Merger")
+  {
+    TagComparator::getInstance().mergeNames(t2Copy, t1Copy, result);
+    TagComparator::getInstance().mergeText(t2Copy, t1Copy, result);
+  }
+  else
+  {
+    TagComparator::getInstance().mergeNames(t1Copy, t2Copy, result);
+    TagComparator::getInstance().mergeText(t1Copy, t2Copy, result);
+  }
+  LOG_VART(result);
 
   //retain any previously set alt_types
   if (!t1Copy[ALT_TYPES_TAG_KEY].trimmed().isEmpty())
@@ -63,41 +75,55 @@ Tags PreserveTypesTagMerger::mergeTags(const Tags& t1, const Tags& t2, ElementTy
   {
     result = _preserveAltTypes(t2Copy, result);
   }
+  LOG_VART(result);
 
   //combine the rest of the tags together; if two tags with the same key are found, use the most
   //specific one or use both if they aren't related in any way
+  OsmSchema& schema = OsmSchema::getInstance();
   for (Tags::ConstIterator it = t1Copy.constBegin(); it != t1Copy.constEnd(); ++it)
   {
     LOG_VART(it.key());
     LOG_VART(it.value());
+
+    if (_skipTagKeys.find(it.key()) != _skipTagKeys.end())
+    {
+      LOG_TRACE("Explicitly skipping tag: " << it.key() << "=" <<  it.value() << "...");
+      continue;
+    }
+    if (schema.isMetaData(it.key(), it.value()))
+    {
+      LOG_TRACE("Skipping metadata tag: " << it.key() << "=" <<  it.value() << "...");
+      continue;
+    }
+    if (_categoryFilter != OsmSchemaCategory::Empty &&
+        !schema.getCategories(it.key(), it.value()).intersects(_categoryFilter))
+    {
+      LOG_TRACE(
+        "Skipping tag not passing category filter: " << it.key() << "=" << it.value() << "...");
+      continue;
+    }
+
     if (!t2Copy[it.key()].trimmed().isEmpty())
     {
       LOG_VART(t2Copy[it.key()]);
       //if one is more specific than the other, add it, but then remove both tags so we don't
       //try to add them again
-      if (OsmSchema::getInstance().isAncestor(it.key() % "=" % t2Copy[it.key()],
-                                              it.key() % "=" % it.value()))
+      if (schema.isAncestor(it.key() % "=" % t2Copy[it.key()], it.key() % "=" % it.value()))
       {
         LOG_TRACE(
           it.key() % "=" % t2Copy[it.key()] << " is more specific than " <<
           it.key() % "=" % it.value() << ".  Using more specific tag.");
         result[it.key()] = t2Copy[it.key()];
       }
-      else if (OsmSchema::getInstance().isAncestor(it.key() % "=" % it.key(),
-                                                   it.key() % "=" % t2Copy[it.value()]))
+      else if (schema.isAncestor(it.key() % "=" % it.key(), it.key() % "=" % t2Copy[it.value()]))
       {
         LOG_TRACE(
           it.key() % "=" % it.value() << " is more specific than " <<
           it.key() % "=" % t2Copy[it.key()] << ".  Using more specific tag.");
         result[it.key()] = it.value();
       }
-      else
+      else  if (it.key() != ALT_TYPES_TAG_KEY)
       {
-        // TODO: This is actually going to bring in any tags into alt_types and not just schema type
-        //tags.  Probably need to either rename alt_types or have a more strict check on which tags
-        //can be merged into it.  Something similar to PoiPolygonTypeScoreExtractor::hasType but
-        //looser could be used...or pass in a type def function to this class.
-
         //arbitrarily use first one and add second to an alt_types field
         LOG_TRACE(
           "Both tag sets contain same type: " << it.key() <<
@@ -131,14 +157,51 @@ Tags PreserveTypesTagMerger::mergeTags(const Tags& t1, const Tags& t2, ElementTy
   {
     LOG_VART(it.key());
     LOG_VART(it.value());
-    if (!result.contains(it.key()) && !it.value().isEmpty())
+    if (_skipTagKeys.find(it.key()) == _skipTagKeys.end() &&
+        !result.contains(it.key()) && !it.value().isEmpty())
     {
       result[it.key()] = it.value();
     }
   }
   LOG_VART(result);
 
+  _removeRedundantAltTypeTags(result);
+  LOG_VART(result);
+
   return result;
+}
+
+void PreserveTypesTagMerger::_removeRedundantAltTypeTags(Tags& tags) const
+{
+  LOG_VART(tags.contains("alt_types"));
+  if (tags.contains("alt_types"))
+  {
+    // Remove anything in alt_types that's also in the building (may be able to handle this within
+    // PreserveTypesTagMerger instead). So far, this has primarily been done to keep building=yes
+    // out of alt_types.
+    const QStringList altTypes = tags.get("alt_types").split(";");
+    LOG_VART(altTypes);
+    QStringList altTypesCopy = altTypes;
+    for (int i = 0; i < altTypes.size(); i++)
+    {
+      LOG_VART(altTypes[i]);
+      assert(altTypes[i].contains("="));
+      const QStringList tagParts = altTypes[i].split("=");
+      assert(tagParts.size() == 2);
+      LOG_VART(tagParts);
+      LOG_VART(tags.get(tagParts[0]) == tagParts[1]);
+      if (tags.get(tagParts[0]) == tagParts[1])
+      {
+        altTypesCopy.removeAll(tagParts[0] + "=" + tagParts[1]);
+      }
+    }
+    LOG_VART(altTypesCopy);
+    if (altTypes.size() != altTypesCopy.size())
+    {
+      LOG_VART(altTypesCopy.join(";"));
+      tags.set("alt_types", altTypesCopy.join(";"));
+    }
+  }
 }
 
 Tags PreserveTypesTagMerger::_preserveAltTypes(const Tags& source, const Tags& target) const

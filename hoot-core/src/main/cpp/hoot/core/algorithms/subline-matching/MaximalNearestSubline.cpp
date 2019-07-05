@@ -72,7 +72,7 @@ MaximalNearestSubline::MaximalNearestSubline(const ConstOsmMapPtr& map,
 Meters MaximalNearestSubline::_calculateIntervalLength()
 {
   Meters result = -1;
-  if(_maxInterval[0].isValid() && _maxInterval[1].isValid())
+  if (_maxInterval[0].isValid() && _maxInterval[1].isValid())
   {
     Meters d0 = _maxInterval[0].calculateDistanceOnWay();
     Meters d1 = _maxInterval[1].calculateDistanceOnWay();
@@ -132,10 +132,8 @@ const vector<WayLocation>& MaximalNearestSubline::getInterval()
   _maxInterval[1] = WayLocation();
 
   /**
-   * The basic strategy is to pick test points on B
-   * and find their nearest point on A.
-   * The interval containing these nearest points
-   * is approximately the MaximalNeareastSubline of A.
+   * The basic strategy is to pick test points on B and find their nearest point on A.
+   * The interval containing these nearest points is approximately the MaximalNeareastSubline of A.
    */
   // Heuristic #1: use every vertex of B as a test point
   for (size_t ib = 0; ib < _b->getNodeCount(); ib++)
@@ -151,13 +149,13 @@ const vector<WayLocation>& MaximalNearestSubline::getInterval()
   /**
    * Heuristic #2:
    *
-   * find the nearest point on B to all vertices of A
-   * and use those points of B as test points.
+   * Find the nearest point on B to all vertices of A and use those points of B as test points.
    * For efficiency use only vertices of A outside current max interval.
    */
   // find all the b points using heuristic 2
   LocationOfPoint bPtLocator(_map, _b);
-  for (size_t ia = 0; ia < _a->getNodeCount(); ia++) {
+  for (size_t ia = 0; ia < _a->getNodeCount(); ia++)
+  {
     WayLocation bLoc = bPtLocator.locate(_map->getNode(_a->getNodeId(ia))->toCoordinate());
     Coordinate bPt = bLoc.getCoordinate();
     WayLocation nearestLocationOnA = _aPtLocator.locate(bPt);
@@ -170,7 +168,7 @@ const vector<WayLocation>& MaximalNearestSubline::getInterval()
   // sort the locations
   sort(testPoints.begin(), testPoints.end());
 
-  boost::shared_ptr<LineString> bls = ElementConverter(_map).convertToLineString(_b);
+  std::shared_ptr<LineString> bls = ElementConverter(_map).convertToLineString(_b);
   double bestLength = -1;
   vector<WayLocation> bestInterval;
   bestInterval.resize(2);
@@ -252,7 +250,8 @@ const vector<WayLocation>& MaximalNearestSubline::_getInterval()
    */
   LocationOfPoint bPtLocator(_map, _b);
   bool foundOne = false;
-  for (size_t ia = 0; ia < _a->getNodeCount(); ia++) {
+  for (size_t ia = 0; ia < _a->getNodeCount(); ia++)
+  {
     if (_isOutsideInterval(ia))
     {
       WayLocation bLoc = bPtLocator.locate(_map->getNode(_a->getNodeId(ia))->toCoordinate());
@@ -286,10 +285,10 @@ const vector<WayLocation>& MaximalNearestSubline::_getInterval()
 }
 
 bool MaximalNearestSubline::_isInBounds(const WayLocation& wl,
-                                        const boost::shared_ptr<LineString>& ls)
+                                        const std::shared_ptr<LineString>& ls)
 {
   // calculate the distance from the test point to b
-  boost::shared_ptr<Point> tp(GeometryFactory::getDefaultInstance()->createPoint(
+  std::shared_ptr<Point> tp(GeometryFactory::getDefaultInstance()->createPoint(
       wl.getCoordinate()));
 
   geos::operation::distance::DistanceOp dop(tp.get(), ls.get());
@@ -306,7 +305,7 @@ bool MaximalNearestSubline::_isInBounds(const WayLocation& wl,
 
   if (result && _maxRelevantAngle >= 0)
   {
-    boost::shared_ptr<CoordinateSequence> cs(dop.nearestPoints());
+    std::shared_ptr<CoordinateSequence> cs(dop.nearestPoints());
 
     LocationOfPoint loc(_map, _b);
     WayLocation wl2 = loc.locate(cs->getAt(1));
@@ -332,9 +331,9 @@ bool MaximalNearestSubline::_isOutsideInterval(int ia)
   return false;
 }
 
-vector< WayPtr > MaximalNearestSubline::splitWay(OsmMapPtr map, int& mnsIndex)
+vector<WayPtr> MaximalNearestSubline::splitWay(OsmMapPtr map, int& mnsIndex)
 {
-  vector< WayPtr > result;
+  vector<WayPtr> result;
   _map = map;
 
   vector<WayLocation> interval = getInterval();
@@ -355,7 +354,7 @@ vector< WayPtr > MaximalNearestSubline::splitWay(OsmMapPtr map, int& mnsIndex)
   // c. ----x---x
   // d. x-------x
 
-  boost::shared_ptr<FindNodesInWayFactory> nf(new FindNodesInWayFactory(_a));
+  std::shared_ptr<FindNodesInWayFactory> nf(new FindNodesInWayFactory(_a));
 
   // if this is b or c
   if (start.getSegmentIndex() != 0 || start.getSegmentFraction() > 0.0)

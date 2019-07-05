@@ -37,6 +37,7 @@
 #include <hoot/core/util/ConfigOptions.h>
 #include <hoot/core/util/Log.h>
 #include <hoot/core/conflate/matching/NodeMatcher.h>
+#include <hoot/core/util/StringUtils.h>
 
 // Qt
 #include <QDebug>
@@ -52,12 +53,12 @@ IntersectionSplitter::IntersectionSplitter()
 {
 }
 
-IntersectionSplitter::IntersectionSplitter(boost::shared_ptr<OsmMap> map) :
+IntersectionSplitter::IntersectionSplitter(const std::shared_ptr<OsmMap>& map) :
 _map(map)
 {
 }
 
-void IntersectionSplitter::_mapNodesToWay(boost::shared_ptr<Way> way)
+void IntersectionSplitter::_mapNodesToWay(const std::shared_ptr<Way>& way)
 {
   long wId = way->getId();
 
@@ -80,7 +81,7 @@ void IntersectionSplitter::_mapNodesToWays()
   const WayMap& ways = _map->getWays();
   for (WayMap::const_iterator it = ways.begin(); it != ways.end(); ++it)
   {
-    boost::shared_ptr<Way> w = it->second;
+    std::shared_ptr<Way> w = it->second;
 
     bool isNetworkType = false;
 
@@ -113,7 +114,7 @@ void IntersectionSplitter::_mapNodesToWays()
   }
 }
 
-void IntersectionSplitter::_removeWayFromMap(boost::shared_ptr<Way> way)
+void IntersectionSplitter::_removeWayFromMap(const std::shared_ptr<Way>& way)
 {
   long wId = way->getId();
 
@@ -124,7 +125,7 @@ void IntersectionSplitter::_removeWayFromMap(boost::shared_ptr<Way> way)
   }
 }
 
-void IntersectionSplitter::splitIntersections(boost::shared_ptr<OsmMap> map)
+void IntersectionSplitter::splitIntersections(const std::shared_ptr<OsmMap>& map)
 {
   IntersectionSplitter is(map);
   return is.splitIntersections();
@@ -137,19 +138,22 @@ void IntersectionSplitter::splitIntersections()
   _mapNodesToWays();
 
   // go through all the nodes
-  bool todoLogged = false;
+  int totalNodes = _todoNodes.size();
+  int numProcessed = 0;
   while (_todoNodes.isEmpty() == false)
   {
     long nodeId = *_todoNodes.begin();
     //  Remove the node first in case it needs to be reprocessed later
     _todoNodes.remove(nodeId);
+    numProcessed++;
 
-    if (Log::getInstance().isInfoEnabled() && _todoNodes.size() % 1000 == 0 &&
-        _todoNodes.size() > 0)
+    if (_todoNodes.size() % 1000 == 0 && _todoNodes.size() > 0)
     {
-      PROGRESS_INFO("  Intersection splitter todo: " << _todoNodes.size() << "       ");
-      todoLogged = true;
+      PROGRESS_INFO(
+        "\tProcessed intersection splits for: " << StringUtils::formatLargeNumber(numProcessed) <<
+        " / " << StringUtils::formatLargeNumber(totalNodes) << " nodes.");
     }
+
     // if the node is part of two or more ways
     if (_nodeToWays.count(nodeId) >= 2)
     {
@@ -161,16 +165,11 @@ void IntersectionSplitter::splitIntersections()
       }
     }
   }
-
-  if (Log::getInstance().isInfoEnabled() && todoLogged)
-  {
-    LOG_INFO("  Intersection splitter todo: 0       ");
-  }
 }
 
 void IntersectionSplitter::_splitWay(long wayId, long nodeId)
 {
-  boost::shared_ptr<Way> way = _map->getWay(wayId);
+  std::shared_ptr<Way> way = _map->getWay(wayId);
   if (way == 0)
   {
     LOG_TRACE("way at " << wayId << " does not exist.");
@@ -208,7 +207,7 @@ void IntersectionSplitter::_splitWay(long wayId, long nodeId)
       if (wayId == compWayId)
         continue;
 
-      boost::shared_ptr<Way> comp = _map->getWay(compWayId);
+      std::shared_ptr<Way> comp = _map->getWay(compWayId);
       LOG_VART(comp.get());
       const std::vector<long>& compIds = comp->getNodeIds();
       long idx = comp->getNodeIndex(nodeId);
@@ -228,7 +227,7 @@ void IntersectionSplitter::_splitWay(long wayId, long nodeId)
     {
       // split the way and remove it from the map
       WayLocation wl(_map, way, firstIndex, 0.0);
-      vector<boost::shared_ptr<Way>> splits = WaySplitter::split(_map, way, wl);
+      vector<std::shared_ptr<Way>> splits = WaySplitter::split(_map, way, wl);
 
       // if a split occurred.
       if (splits.size() > 1)
@@ -242,7 +241,7 @@ void IntersectionSplitter::_splitWay(long wayId, long nodeId)
         const ElementId splitWayId = way->getElementId();
 
         QList<ElementPtr> newWays;
-        foreach (const boost::shared_ptr<Way>& w, splits)
+        foreach (const std::shared_ptr<Way>& w, splits)
         {
           newWays.append(w);
         }
@@ -266,7 +265,7 @@ void IntersectionSplitter::_splitWay(long wayId, long nodeId)
   }
 }
 
-void IntersectionSplitter::apply(boost::shared_ptr<OsmMap> &map)
+void IntersectionSplitter::apply(std::shared_ptr<OsmMap> &map)
 {
   splitIntersections(map);
 }

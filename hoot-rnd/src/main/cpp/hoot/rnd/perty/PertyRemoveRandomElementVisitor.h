@@ -28,8 +28,9 @@
 #define PERTYREMOVERANDOMELEMENTVISITOR_H
 
 // hoot
-#include <hoot/core/visitors/ElementOsmMapVisitor.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 #include <hoot/core/util/Configurable.h>
+#include <hoot/core/visitors/ElementOsmMapVisitor.h>
 #include <hoot/rnd/perty/RngConsumer.h>
 
 namespace hoot
@@ -39,7 +40,7 @@ namespace hoot
  * Randomly removes elements from a map
  */
 class PertyRemoveRandomElementVisitor : public ElementOsmMapVisitor, public RngConsumer,
-    public Configurable
+    public Configurable, public OperationStatusInfo
 {
 public:
 
@@ -60,14 +61,20 @@ public:
   virtual void setRng(boost::minstd_rand& rng) { _rng = &rng; }
 
   virtual void visit(const ConstElementPtr& e);
-  virtual void visit(const boost::shared_ptr<Element>& /*e*/) override {}
+  virtual void visit(const std::shared_ptr<Element>& /*e*/) override {}
 
   virtual QString getDescription() const { return "Randomly removes elements from a map"; }
+
+  virtual QString getInitStatusMessage() const
+  { return "Removing random elements..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Randomly removed " + QString::number(_numAffected) + " elements"; }
 
 private:
 
   boost::minstd_rand* _rng;
-  boost::shared_ptr<boost::minstd_rand> _localRng;
+  std::shared_ptr<boost::minstd_rand> _localRng;
   double _p;
 };
 

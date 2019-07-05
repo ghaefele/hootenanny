@@ -22,13 +22,15 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 package hoot.services.controllers.ingest;
 
 import static hoot.services.HootProperties.UPLOAD_FOLDER;
 import static hoot.services.controllers.ingest.UploadClassification.FGDB;
 import static hoot.services.controllers.ingest.UploadClassification.FGDB_ZIP;
+import static hoot.services.controllers.ingest.UploadClassification.GEOJSON;
+import static hoot.services.controllers.ingest.UploadClassification.GEOJSON_ZIP;
 import static hoot.services.controllers.ingest.UploadClassification.GEONAMES;
 import static hoot.services.controllers.ingest.UploadClassification.GEONAMES_ZIP;
 import static hoot.services.controllers.ingest.UploadClassification.OSM;
@@ -71,6 +73,7 @@ import hoot.services.command.Command;
 import hoot.services.command.ExternalCommand;
 import hoot.services.job.Job;
 import hoot.services.job.JobProcessor;
+import hoot.services.job.JobType;
 import hoot.services.models.db.Users;
 import hoot.services.utils.MultipartSerializer;
 
@@ -119,10 +122,7 @@ public class ImportResource {
                                       @QueryParam("NONE_TRANSLATION") Boolean noneTranslation,
                                       @QueryParam("DEBUG_LEVEL") @DefaultValue("info") String debugLevel,
                                       FormDataMultiPart multiPart) {
-        Users user = null;
-        if(request != null) {
-            user = Users.fromRequest(request);
-        }
+        Users user = Users.fromRequest(request);
         List<Map<String,Object>> results = new ArrayList<Map<String,Object>>();
 
         try {
@@ -131,8 +131,8 @@ public class ImportResource {
 
             List<File> uploadedFiles = MultipartSerializer.serializeUpload(multiPart, workDir);
 
-            int shpCnt = 0, osmCnt = 0, fgdbCnt = 0, geonamesCnt = 0, zipCnt = 0;
-            int shpZipCnt = 0, osmZipCnt = 0, geonamesZipCnt = 0, fgdbZipCnt = 0;
+            int shpCnt = 0, osmCnt = 0, fgdbCnt = 0, geojsonCnt = 0, geonamesCnt = 0, zipCnt = 0;
+            int shpZipCnt = 0, osmZipCnt = 0, geojsonZipCnt = 0, geonamesZipCnt = 0, fgdbZipCnt = 0;
 
             List<File> filesToImport = new LinkedList<>();
             List<String> fileNames = new ArrayList<>();
@@ -172,10 +172,12 @@ public class ImportResource {
                 shpCnt += counts.get(SHP);
                 fgdbCnt += counts.get(FGDB);
                 osmCnt += counts.get(OSM);
+                geojsonCnt +=  counts.get(GEOJSON);
                 geonamesCnt += counts.get(GEONAMES);
                 shpZipCnt += counts.get(SHAPE_ZIP);
                 fgdbZipCnt += counts.get(FGDB_ZIP);
                 osmZipCnt += counts.get(OSM_ZIP);
+                geojsonZipCnt += counts.get(GEOJSON_ZIP);
                 geonamesZipCnt += counts.get(GEONAMES_ZIP);
 
                 if ((geonamesCnt == 1) && (initialUploadClassification == TXT)) {
@@ -199,15 +201,16 @@ public class ImportResource {
                 shpCnt = fgdbCnt = geonamesCnt = shpZipCnt = geonamesZipCnt = fgdbZipCnt = zipCnt = osmZipCnt = 0;
             }
 
-            UploadClassification finalUploadClassification = ImportResourceUtils.finalizeUploadClassification(zipCnt,
-                    shpZipCnt, fgdbZipCnt, osmZipCnt, geonamesZipCnt, shpCnt, fgdbCnt, osmCnt, geonamesCnt);
+			UploadClassification finalUploadClassification = ImportResourceUtils.finalizeUploadClassification(zipCnt,
+					shpZipCnt, fgdbZipCnt, osmZipCnt, geojsonZipCnt, geonamesZipCnt, shpCnt, fgdbCnt, osmCnt,
+					geojsonCnt, geonamesCnt);
 
             ExternalCommand importCommand = fileETLCommandFactory.build(jobId, workDir, filesToImport, zipsToImport, translation,
                     etlName, noneTranslation, debugLevel, finalUploadClassification, this.getClass(), user);
 
             Command[] workflow = { importCommand };
 
-            jobProcessor.submitAsync(new Job(jobId, workflow));
+            jobProcessor.submitAsync(new Job(jobId, user.getId(), workflow, JobType.IMPORT));
 
             Map<String, Object> res = new HashMap<String, Object>();
             res.put("jobid", jobId);

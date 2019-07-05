@@ -27,7 +27,9 @@
 #ifndef UNIONPOLYGONSVISITOR_H
 #define UNIONPOLYGONSVISITOR_H
 
+// Hoot
 #include <hoot/core/visitors/ElementConstOsmMapVisitor.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 // geos
 #include <geos/geom/Geometry.h>
@@ -41,7 +43,7 @@ namespace hoot
  * @optimize This could be made more efficient by sacrificing a bit of RAM. See
  * AlphaShape::toGeometry() for an example implementation.
  */
-class UnionPolygonsVisitor : public ElementConstOsmMapVisitor
+class UnionPolygonsVisitor : public ElementConstOsmMapVisitor, public OperationStatusInfo
 {
 public:
 
@@ -49,15 +51,22 @@ public:
 
   UnionPolygonsVisitor();
 
-  const boost::shared_ptr<geos::geom::Geometry>& getUnion() const { return _result; }
+  const std::shared_ptr<geos::geom::Geometry>& getUnion() const { return _result; }
 
-  virtual void visit(const boost::shared_ptr<const Element>& e) override;
+  virtual void visit(const std::shared_ptr<const Element>& e) override;
 
-  virtual QString getDescription() const { return "Unions all areas to create a single geometry"; }
+  virtual QString getDescription() const
+  { return "Combines all areas together into a single area"; }
+
+  virtual QString getInitStatusMessage() const
+  { return "Combining ares..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Combined " + QString::number(_numAffected) + " areas"; }
 
 private:
 
-  boost::shared_ptr<geos::geom::Geometry> _result;
+  std::shared_ptr<geos::geom::Geometry> _result;
 };
 
 }

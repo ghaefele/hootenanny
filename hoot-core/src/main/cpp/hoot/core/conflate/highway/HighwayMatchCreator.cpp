@@ -47,6 +47,7 @@
 #include <hoot/core/util/NotImplementedException.h>
 #include <hoot/core/schema/TagAncestorDifferencer.h>
 #include <hoot/core/criterion/HighwayCriterion.h>
+#include <hoot/core/util/StringUtils.h>
 
 // Standard
 #include <fstream>
@@ -89,10 +90,10 @@ public:
    * This constructor has gotten a little out of hand.
    */
   HighwayMatchVisitor(const ConstOsmMapPtr& map,
-    vector<const Match*>& result, boost::shared_ptr<HighwayClassifier> c,
-    boost::shared_ptr<SublineStringMatcher> sublineMatcher, Status matchStatus,
+    vector<const Match*>& result, std::shared_ptr<HighwayClassifier> c,
+    std::shared_ptr<SublineStringMatcher> sublineMatcher, Status matchStatus,
     ConstMatchThresholdPtr threshold,
-    boost::shared_ptr<TagAncestorDifferencer> tagAncestorDiff,
+    std::shared_ptr<TagAncestorDifferencer> tagAncestorDiff,
     ElementCriterionPtr filter = ElementCriterionPtr()):
     _map(map),
     _result(result),
@@ -121,18 +122,18 @@ public:
 
   virtual QString getDescription() const { return ""; }
 
-  void checkForMatch(const boost::shared_ptr<const Element>& e)
+  void checkForMatch(const std::shared_ptr<const Element>& e)
   {
     LOG_VART(e->getElementId());
+    //LOG_VART(e);
 
-    boost::shared_ptr<Envelope> env(e->getEnvelope(_map));
+    std::shared_ptr<Envelope> env(e->getEnvelope(_map));
     env->expandBy(getSearchRadius(e));
 
     // find other nearby candidates
-    set<ElementId> neighbors = IndexElementsVisitor::findNeighbors(*env,
-                                                                   getIndex(),
-                                                                   _indexToEid,
-                                                                   getMap());
+    set<ElementId> neighbors =
+      IndexElementsVisitor::findNeighbors(*env, getIndex(), _indexToEid, getMap());
+
     ElementId from(e->getElementType(), e->getId());
 
     _elementsEvaluated++;
@@ -142,13 +143,13 @@ public:
     {
       if (from != *it)
       {
-        const boost::shared_ptr<const Element>& n = _map->getElement(*it);
+        const std::shared_ptr<const Element>& n = _map->getElement(*it);
         // score each candidate and push it on the result vector
-        HighwayMatch* m =
+        HighwayMatch* match =
           createMatch(_map, _c, _sublineMatcher, _threshold, _tagAncestorDiff, e, n);
-        if (m)
+        if (match)
         {
-          _result.push_back(m);
+          _result.push_back(match);
           neighborCount++;
         }
       }
@@ -159,15 +160,15 @@ public:
   }
 
   static HighwayMatch* createMatch(const ConstOsmMapPtr& map,
-    boost::shared_ptr<HighwayClassifier> classifier,
-    boost::shared_ptr<SublineStringMatcher> sublineMatcher,
+    std::shared_ptr<HighwayClassifier> classifier,
+    std::shared_ptr<SublineStringMatcher> sublineMatcher,
     ConstMatchThresholdPtr threshold,
-    boost::shared_ptr<TagAncestorDifferencer> tagAncestorDiff,
+    std::shared_ptr<TagAncestorDifferencer> tagAncestorDiff,
     ConstElementPtr e1, ConstElementPtr e2)
   {
     HighwayMatch* result = 0;
 
-    HighwayCriterion highwayCrit;
+    HighwayCriterion highwayCrit(map);
     if (e1 && e2 &&
         e1->getStatus() != e2->getStatus() && e2->isUnknown() &&
         highwayCrit.isSatisfied(e1) && highwayCrit.isSatisfied(e2) &&
@@ -188,7 +189,7 @@ public:
     return result;
   }
 
-  Meters getSearchRadius(const boost::shared_ptr<const Element>& e) const
+  Meters getSearchRadius(const std::shared_ptr<const Element>& e) const
   {
     Meters searchRadius;
     if (_searchRadius >= 0)
@@ -210,7 +211,7 @@ public:
       checkForMatch(e);
 
       _numMatchCandidatesVisited++;
-      if (_numMatchCandidatesVisited % _taskStatusUpdateInterval == 0)
+      if (_numMatchCandidatesVisited % (_taskStatusUpdateInterval * 100) == 0)
       {
         PROGRESS_DEBUG(
           "Processed " << _numMatchCandidatesVisited << " match candidates / " <<
@@ -219,10 +220,11 @@ public:
     }
 
     _numElementsVisited++;
-    if (_numElementsVisited % _taskStatusUpdateInterval == 0)
+    if (_numElementsVisited % (_taskStatusUpdateInterval * 100) == 0)
     {
       PROGRESS_INFO(
-        "Processed " << _numElementsVisited << " / " << _map->getElementCount() << " elements.");
+        "Processed " << StringUtils::formatLargeNumber(_numElementsVisited) << " / " <<
+        StringUtils::formatLargeNumber(_map->getElementCount()) << " elements.");
     }
   }
 
@@ -232,28 +234,28 @@ public:
     {
       return false;
     }
-    return HighwayCriterion().isSatisfied(element);
+    return HighwayCriterion(_map).isSatisfied(element);
   }
 
-  boost::shared_ptr<HilbertRTree>& getIndex()
+  std::shared_ptr<HilbertRTree>& getIndex()
   {
     if (!_index)
     {
       // No tuning was done, I just copied these settings from OsmMapIndex.
-      // 10 children - 368
-      boost::shared_ptr<MemoryPageStore> mps(new MemoryPageStore(728));
+      // 10 children - 368 - see #3054
+      std::shared_ptr<MemoryPageStore> mps(new MemoryPageStore(728));
       _index.reset(new HilbertRTree(mps, 2));
 
       // Only index elements satisfy isMatchCandidate(e)
-      boost::function<bool (ConstElementPtr e)> f =
-        boost::bind(&HighwayMatchVisitor::isMatchCandidate, this, _1);
-      boost::shared_ptr<ArbitraryCriterion> pCrit(new ArbitraryCriterion(f));
+      std::function<bool (ConstElementPtr e)> f =
+        std::bind(&HighwayMatchVisitor::isMatchCandidate, this, placeholders::_1);
+      std::shared_ptr<ArbitraryCriterion> pCrit(new ArbitraryCriterion(f));
 
       // Instantiate our visitor
       IndexElementsVisitor v(_index,
                              _indexToEid,
                              pCrit,
-                             boost::bind(&HighwayMatchVisitor::getSearchRadius, this, _1),
+                             std::bind(&HighwayMatchVisitor::getSearchRadius, this, placeholders::_1),
                              getMap());
 
       getMap()->visitRo(v);
@@ -272,8 +274,8 @@ private:
   const ConstOsmMapPtr& _map;
   vector<const Match*>& _result;
   set<ElementId> _empty;
-  boost::shared_ptr<HighwayClassifier> _c;
-  boost::shared_ptr<SublineStringMatcher> _sublineMatcher;
+  std::shared_ptr<HighwayClassifier> _c;
+  std::shared_ptr<SublineStringMatcher> _sublineMatcher;
   Status _matchStatus;
   int _neighborCountMax;
   int _neighborCountSum;
@@ -281,12 +283,12 @@ private:
   size_t _maxGroupSize;
   Meters _searchRadius;
   ConstMatchThresholdPtr _threshold;
-  boost::shared_ptr<TagAncestorDifferencer> _tagAncestorDiff;
+  std::shared_ptr<TagAncestorDifferencer> _tagAncestorDiff;
   double _highwayMaxEnumDiff;
   ElementCriterionPtr _filter;
 
   // Used for finding neighbors
-  boost::shared_ptr<HilbertRTree> _index;
+  std::shared_ptr<HilbertRTree> _index;
   deque<ElementId> _indexToEid;
 
   long _numElementsVisited;
@@ -303,7 +305,7 @@ HighwayMatchCreator::HighwayMatchCreator()
     Factory::getInstance().constructObject<SublineStringMatcher>(
       ConfigOptions().getHighwaySublineStringMatcher()));
 
-  _tagAncestorDiff = boost::shared_ptr<TagAncestorDifferencer>(new TagAncestorDifferencer("highway"));
+  _tagAncestorDiff = std::shared_ptr<TagAncestorDifferencer>(new TagAncestorDifferencer("highway"));
 
   Settings settings = conf();
   settings.set("way.matcher.max.angle", ConfigOptions().getHighwayMatcherMaxAngle());
@@ -327,7 +329,9 @@ void HighwayMatchCreator::createMatches(const ConstOsmMapPtr& map, vector<const 
     map, matches, _classifier, _sublineMatcher, Status::Unknown1, threshold, _tagAncestorDiff,
     _filter);
   map->visitRo(v);
-  LOG_INFO("Found " << v.getNumMatchCandidatesFound() << " highway match candidates.");
+  LOG_INFO(
+    "Found " << StringUtils::formatLargeNumber(v.getNumMatchCandidatesFound()) <<
+    " highway match candidates.");
 }
 
 vector<CreatorDescription> HighwayMatchCreator::getAllCreators() const
@@ -347,7 +351,7 @@ bool HighwayMatchCreator::isMatchCandidate(ConstElementPtr element, const ConstO
   return HighwayMatchVisitor(map, matches, _filter).isMatchCandidate(element);
 }
 
-boost::shared_ptr<MatchThreshold> HighwayMatchCreator::getMatchThreshold()
+std::shared_ptr<MatchThreshold> HighwayMatchCreator::getMatchThreshold()
 {
   if (!_matchThreshold.get())
   {

@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2016, 2017 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2016, 2017, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef WAYSTRING_H
 #define WAYSTRING_H
@@ -50,7 +50,7 @@ public:
 
   static std::string className() { return "hoot::WayString"; }
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
 
   WayString();
 
@@ -64,8 +64,8 @@ public:
 
   Meters calculateLength() const;
 
-  WayLocation calculateLocationFromStart(Meters distance,
-    ElementId preferredEid = ElementId()) const;
+  WayLocation calculateLocationFromStart(
+    Meters distance, ElementId preferredEid = ElementId()) const;
 
   /**
    * Simplifies this WayString from a complex collection of sublines into a single simple way. The
@@ -105,8 +105,8 @@ private:
   WayLocation _changeToPreferred(int index, const WayLocation& wl, ElementId preferredEid) const;
 };
 
-typedef boost::shared_ptr<WayString> WayStringPtr;
-typedef boost::shared_ptr<const WayString> ConstWayStringPtr;
+typedef std::shared_ptr<WayString> WayStringPtr;
+typedef std::shared_ptr<const WayString> ConstWayStringPtr;
 
 }
 

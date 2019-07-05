@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef REPLACETAGVISITOR_H
 #define REPLACETAGVISITOR_H
@@ -30,6 +30,7 @@
 // hoot
 #include <hoot/core/elements/ElementVisitor.h>
 #include <hoot/core/util/Configurable.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 namespace hoot
 {
@@ -44,7 +45,7 @@ namespace hoot
  * Feel free to extend this class. Maybe add a flag for case-insensitive
  * matching. Or support for wildcards.
  */
-class ReplaceTagVisitor : public ElementVisitor, public Configurable
+class ReplaceTagVisitor : public ElementVisitor, public Configurable, public OperationStatusInfo
 {
 public:
 
@@ -88,12 +89,20 @@ public:
    * @brief visit - visit an element & perform check and replace
    * @param e - element to visit
    */
-  virtual void visit(const boost::shared_ptr<Element>& e);
+  virtual void visit(const std::shared_ptr<Element>& e);
 
   virtual QString getDescription() const
   { return "Replaces matching tags with the specified replacement tag"; }
 
   virtual void setConfiguration(const Settings& conf);
+
+  virtual QString getInitStatusMessage() const
+  { return "Replacing tags..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  {
+    return "Replaced " + QString::number(_numAffected) + " element tags";
+  }
 
 private:
 

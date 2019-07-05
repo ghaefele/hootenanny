@@ -52,8 +52,7 @@ namespace hoot
 
 HOOT_FACTORY_REGISTER(ElementCriterion, ParallelWayCriterion)
 
-ParallelWayCriterion::ParallelWayCriterion(const ConstOsmMapPtr& map,
-                                           ConstWayPtr baseWay,
+ParallelWayCriterion::ParallelWayCriterion(const ConstOsmMapPtr& map, ConstWayPtr baseWay,
                                            bool isParallel) :
   _map(map),
   _baseWay(baseWay),
@@ -93,11 +92,10 @@ ParallelWayCriterion::~ParallelWayCriterion()
 
 Radians ParallelWayCriterion::calculateDifference(const ConstWayPtr& w) const
 {
-  boost::shared_ptr<LineString> ls = ElementConverter(_map).convertToLineString(w);
+  std::shared_ptr<LineString> ls = ElementConverter(_map).convertToLineString(w);
 
   Radians deltaSum = 0.0;
   int count = 0;
-
 
   for (size_t i = 0; i < _points.size(); i++)
   {
@@ -137,7 +135,7 @@ bool ParallelWayCriterion::isSatisfied(const ConstElementPtr& e) const
 {
   if (e->getElementType() == ElementType::Way)
   {
-    ConstWayPtr way = boost::dynamic_pointer_cast<const Way>(e);
+    ConstWayPtr way = std::dynamic_pointer_cast<const Way>(e);
     double difference = calculateDifference(way);
 
     // If the mean "normals" are within 10 degrees of perpendicular.

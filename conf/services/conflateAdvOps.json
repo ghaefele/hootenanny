@@ -470,7 +470,7 @@
                 "hoot_key":"unify.optimizer.time.limit"
             }
         ]
-    },
+    }, 
     {
         "id":"hoot_road_options",
         "elem_type":"group",
@@ -642,6 +642,58 @@
         ]
     },
     {
+        "id":"hoot_differential_road_options",
+        "elem_type":"group",
+        "description":"Hootenanny Differential Conflation Options",
+        "name":"Differential Conflation Options",
+        "members":[
+            {
+            	"id":"differential_snap_unconnected_roads",
+                "elem_type":"bool",
+                "defaultvalue":"false",
+                "description":"If true, when running Differential Conflation the Unconnected Way Snapper will snap unconnected secondary road endpoint nodes to the nearest reference road.",
+                "name":"Snap Unconnected Roads",
+                "hoot_key":"differential.snap.unconnected.roads"
+            },
+            {
+            	"id":"differential_road_remove_reference_data",
+                "elem_type":"bool",
+                "defaultvalue":"true",
+                "description":"If false, when running Differential Conflation the reference elements will not be dropped from the output.",
+                "name":"Remove Reference Data",
+                "hoot_key":"differential.remove.reference.data"
+            },
+            {
+            	"id":"differential_road_snap_tolerance",
+                "elem_type":"double",
+                "description":"Maximum distance, in meters, allowed between an unconnected road and a neighboring road for the unconnected road to be snapped to the closest section of the neighboring road.",
+                "name":"Road Snap Tolerance",
+                "defaultvalue":"5.0",
+                "minvalue":"0.01",
+                "maxvalue":"50.0",
+                "hoot_key":"snap.unconnected.ways.snap.tolerance"
+            },
+            {
+            	"id":"differential_road_snap_use_existing_road_nodes",
+                "elem_type":"bool",
+                "defaultvalue":"true",
+                "description":"If true, when road nodes are snapped to neighboring roads, Hootenanny will attempt to snap to existing road nodes on instead of adding new ones.",
+                "name":"Use Existing Road Nodes When Snapping Roads",
+                "hoot_key":"snap.unconnected.ways.use.existing.way.nodes"
+            },
+            {
+            	"id":"differential_road_snap_existing_road_node_tolerance",
+                "elem_type":"double",
+                "description":"Maximum distance, in meters, allowed between an unconnected road and a neighboring road for the road node to be snapped directly to the existing road node.",
+                "name":"Name Score Threshold",
+                "defaultvalue":"0.5",
+                "minvalue":"0.01",
+                "maxvalue":"50.0",
+                "hoot_key":"snap.unconnected.ways.existing.way.node.tolerance"
+            }
+        ]
+    },
+    {
         "id":"hoot_area_options",
         "elem_type":"group",
         "description":"Hootenanny area options",
@@ -698,12 +750,30 @@
                 "onchange":"true"
             },
             {
-            	"id":"building_review_if_secondary_newer",
-                "elem_type":"bool",
-                "defaultvalue":"false",
-                "description":"If true, any buildings in the secondary layer will be automatically reviewed against potentially matching features in the reference layer if they are marked with a more recent date than that of the reference feature.",
-                "name":"Review If Secondary Layer Building Newer",
-                "hoot_key":"building.review.if.secondary.newer"
+                "id":"building_match_creator",
+                "elem_type":"string",
+                "description":"List of MatchCreators to use during conflation. This can modify what features will be conflated (e.g. buildings, roads, etc.).",
+                "name":"Match Creator",
+                "required":"true",
+                "defaultvalue":"hoot::BuildingMatchCreator",
+                "override":{
+                    "defaultvalue":"hoot::BuildingMatchCreator"
+                },
+                "hoot_key":"match.creators",
+                "required":"true"
+            },
+            {
+                "id":"building_merger_creator",
+                "elem_type":"string",
+                "description":"List of MergerCreators to use during conflation. This can modify what features will be conflated (e.g. buildings, roads, etc.).",
+                "name":"Merger Creator",
+                "required":"true",
+                "defaultvalue":"hoot::BuildingMergerCreator",
+                "override":{
+                    "defaultvalue":"hoot::BuildingMergerCreator"
+                },
+                "hoot_key":"merger.creators",
+                "required":"true"
             },
             {
         	"id":"building_date_format",
@@ -732,30 +802,28 @@
                 "hoot_key":"building.keep.more.complex.geometry.when.auto.merging"
             },
             {
-                "id":"building_match_creator",
-                "elem_type":"string",
-                "description":"List of MatchCreators to use during conflation. This can modify what features will be conflated (e.g. buildings, roads, etc.).",
-                "name":"Match Creator",
-                "required":"true",
-                "defaultvalue":"hoot::BuildingMatchCreator",
-                "override":{
-                    "defaultvalue":"hoot::BuildingMatchCreator"
-                },
-                "hoot_key":"match.creators",
-                "required":"true"
+            	"id":"building_merge_many_to_many_matches",
+                "elem_type":"bool",
+                "defaultvalue":"false",
+                "description":"If false, many to many building matches will result in a review. If true, they will all be merged together when matched.",
+                "name":"Merge Many to Many Matches",
+                "hoot_key":"building.merge.many.to.many.matches"
             },
             {
-                "id":"building_merger_creator",
-                "elem_type":"string",
-                "description":"List of MergerCreators to use during conflation. This can modify what features will be conflated (e.g. buildings, roads, etc.).",
-                "name":"Merger Creator",
-                "required":"true",
-                "defaultvalue":"hoot::BuildingMergerCreator",
-                "override":{
-                    "defaultvalue":"hoot::BuildingMergerCreator"
-                },
-                "hoot_key":"merger.creators",
-                "required":"true"
+            	"id":"building_outline_update_op_remove_building_relations",
+                "elem_type":"bool",
+                "defaultvalue":"false",
+                "description":"If true, when building outlines are updated the updater will remove the source building relations used to create the outline multipolygon relation.  If false, both source building relations and outline multipolygon relations will remain.",
+                "name":"Remove Building Relations",
+                "hoot_key":"building.outline.update.op.remove.building.relations"
+            },
+            {
+            	"id":"building_review_if_secondary_newer",
+                "elem_type":"bool",
+                "defaultvalue":"false",
+                "description":"If true, any buildings in the secondary layer will be automatically reviewed against potentially matching features in the reference layer if they are marked with a more recent date than that of the reference feature.",
+                "name":"Review If Secondary Layer Building Newer",
+                "hoot_key":"building.review.if.secondary.newer"
             },
             {
             	"id":"building_review_matches_other_than_one_to_one",
@@ -863,12 +931,28 @@
         	"onchange":"true"
     	    },
             {
+        	"id":"poipolygon_address_allow_lenient_house_number_matching",
+        	"elem_type":"bool",
+        	"defaultvalue":"true",
+        	"description":"If true, POI/Polygon conflation will allow house number subletter mismatches for the addresses with the same house number.  e.g. when enabled, 23a Elm Street matches 23 Elm Street",
+        	"name":"Allow Lenient House Number Matching",
+        	"hoot_key":"poi.polygon.address.allow.lenient.house.number.matching"
+    	    },
+            {
         	"id":"poipolygon_address_match_enabled",
         	"elem_type":"bool",
         	"defaultvalue":"true",
         	"description":"If true, POI/Polygon conflation will compare addresses as one of the criteria for matching features.  If the data being conflated is known to have poor address data, disabling this option may speed up conflation runtime performance.",
         	"name":"Address Match Enabled",
         	"hoot_key":"poi.polygon.address.match.enabled"
+    	    },
+            {
+        	"id":"poipolygon_allow_cross_conflation_merging",
+        	"elem_type":"bool",
+        	"defaultvalue":"false",
+        	"description":"If false, when a match found by Building Conflation involves the same feature in a match found by POI to Polygon Conflation, a review will be generated. If true, then that situation will result in a merge between all features involved in the Building and POI to Polygon conflation matches.",
+        	"name":"Allow Cross Conflation Merging",
+        	"hoot_key":"poi.polygon.allow.cross.conflation.merging"
     	    },
             {
         	"id":"poipolygon_auto_merge_many_poi_to_one_poly_matches",

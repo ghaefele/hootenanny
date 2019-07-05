@@ -7,8 +7,9 @@
             <nd ref="1669731"/>
             <nd ref="-1"/>
             <nd ref="-2"/>
-            <tag k="note" v="1"/>
             <tag k="highway" v="road"/>
+            <tag k="note" v="1"/>
+            <tag k="error:circular" v="15"/>
         </way>
     </create>
 </osmChange>

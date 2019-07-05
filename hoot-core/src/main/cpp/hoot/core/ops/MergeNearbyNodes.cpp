@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include "MergeNearbyNodes.h"
@@ -56,32 +56,29 @@ namespace hoot
 
 HOOT_FACTORY_REGISTER(OsmMapOperation, MergeNearbyNodes)
 
-double calcDistance(const NodePtr& n1, const NodePtr& n2)
+double calcDistanceSquared(const NodePtr& n1, const NodePtr& n2)
 {
   double dx = n1->getX() - n2->getX();
   double dy = n1->getY() - n2->getY();
-  return sqrt(dx * dx + dy * dy);
+  return dx * dx + dy * dy;
 }
 
 MergeNearbyNodes::MergeNearbyNodes(Meters distance)
 {
   _distance = distance;
-
   if (_distance < 0.0)
   {
     _distance = ConfigOptions().getMergeNearbyNodesDistance();
   }
 }
 
-void MergeNearbyNodes::apply(boost::shared_ptr<OsmMap>& map)
+void MergeNearbyNodes::apply(std::shared_ptr<OsmMap>& map)
 {
-  LOG_INFO("MergeNearbyNodes start");
-
   QTime time;
   time.start();
 
-  boost::shared_ptr<OsmMap> wgs84;
-  boost::shared_ptr<OsmMap> planar;
+  std::shared_ptr<OsmMap> wgs84;
+  std::shared_ptr<OsmMap> planar;
 
   if (MapProjector::isGeographic(map))
   {
@@ -102,16 +99,25 @@ void MergeNearbyNodes::apply(boost::shared_ptr<OsmMap>& map)
 
   ClosePointHash cph(_distance);
 
+  int startNodeCount = 0;
   const NodeMap& nodes = planar->getNodes();
   for (NodeMap::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
   {
     const NodePtr& n = it->second;
     cph.addPoint(n->getX(), n->getY(), n->getId());
+    startNodeCount++;
+
+    if (startNodeCount % 100000 == 0)
+    {
+      PROGRESS_INFO(
+        "\tInitialized " << StringUtils::formatLargeNumber(startNodeCount) << " nodes / " <<
+        StringUtils::formatLargeNumber(nodes.size()) << " for merging.");
+    }
   }
 
-  int mergeCount = 0;
-  int count = 0;
+  double distanceSquared = _distance * _distance;
 
+  int processedCount = 0;
   cph.resetIterator();
   while (cph.next())
   {
@@ -119,14 +125,16 @@ void MergeNearbyNodes::apply(boost::shared_ptr<OsmMap>& map)
 
     for (size_t i = 0; i < v.size(); i++)
     {
+      if (!map->containsNode(v[i])) continue;
+
       for (size_t j = 0; j < v.size(); j++)
       {
-        if (v[i] != v[j] && map->containsNode(v[i]) && map->containsNode(v[j]))
+        if (v[i] != v[j] && map->containsNode(v[j]))
         {
           const NodePtr& n1 = planar->getNode(v[i]);
           const NodePtr& n2 = planar->getNode(v[j]);
-          double d = calcDistance(n1, n2);
-          if (d < _distance && n1->getStatus() == n2->getStatus())
+
+          if (distanceSquared > calcDistanceSquared(n1, n2) && n1->getStatus() == n2->getStatus())
           {
             bool replace = false;
             // if the geographic bounds are not specified.
@@ -149,24 +157,24 @@ void MergeNearbyNodes::apply(boost::shared_ptr<OsmMap>& map)
             if (replace)
             {
               map->replaceNode(v[j], v[i]);
-              mergeCount++;
+              _numAffected++;
             }
           }
         }
       }
     }
 
-    if (count % 1000 == 0)
+    processedCount++;
+    if (processedCount % 10000 == 0)
     {
-      PROGRESS_INFO("MergeNearbyNodes " << count << " " << mergeCount << "    ");
+      PROGRESS_INFO(
+        "\tMerged " << StringUtils::formatLargeNumber(_numAffected) << " node groups / " <<
+        StringUtils::formatLargeNumber(startNodeCount) << " total nodes.");
     }
-    count++;
   }
-
-  LOG_INFO("MergeNearbyNodes " << nodes.size() << " elapsed: " << time.elapsed() << "ms        ");
 }
 
-void MergeNearbyNodes::mergeNodes(boost::shared_ptr<OsmMap> map, Meters distance)
+void MergeNearbyNodes::mergeNodes(std::shared_ptr<OsmMap> map, Meters distance)
 {
   MergeNearbyNodes mnn(distance);
   mnn.apply(map);
@@ -181,6 +189,5 @@ void MergeNearbyNodes::writeObject(QDataStream& os) const
 {
   os << _distance;
 }
-
 
 }

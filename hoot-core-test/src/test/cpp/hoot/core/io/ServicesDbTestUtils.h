@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2013, 2014, 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef SERVICESDBTESTUTILS_H
 #define SERVICESDBTESTUTILS_H
@@ -51,8 +51,8 @@ public:
   /**
    * Run a specified query and compare the results against the expected results.
    */
-  static void compareRecords(QString sql, QString expected, QVariant v1 = QVariant(),
-    QVariant v2 = QVariant());
+  static void compareRecords(QString sql, QString expected, QString testName = NULL,
+                             QVariant v1 = QVariant(), QVariant v2 = QVariant());
 
   /**
    * Retrieves a URL used to modify services database data
@@ -87,21 +87,21 @@ public:
 
   static void verifyTestDatabaseEmpty();
 
-  static boost::shared_ptr<OsmMap> createTestMap1();
+  static std::shared_ptr<OsmMap> createTestMap1();
 
   static OsmMapPtr createServiceTestMap();
 
-  static long insertTestUser(const QString userName, const QString email, const QString sessionId,
-                             const QString accessToken, const QString accessTokenSecret);
+  static long insertTestUser(const QString& userName, const QString& email, const QString& sessionId,
+                             const QString& accessToken, const QString& accessTokenSecret);
 
-  static bool deleteUserByUserName(const QString userName);
+  static bool deleteUserByUserName(const QString& userName);
 
-  static boost::shared_ptr<HootNetworkCookieJar> getTestSessionCookie(const QString sessionId,
-                                                                      const QString url);
+  static std::shared_ptr<HootNetworkCookieJar> getTestSessionCookie(const QString& sessionId,
+                                                                    const QString& url);
 
 private:
 
-  static boost::shared_ptr<Node> _createNode(double x, double y, OsmMapPtr map);
+  static std::shared_ptr<Node> _createNode(double x, double y, OsmMapPtr map);
 };
 
 }

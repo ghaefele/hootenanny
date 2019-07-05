@@ -65,7 +65,7 @@ HootApiDbWriter::~HootApiDbWriter()
   close();
 }
 
-void HootApiDbWriter::_addElementTags(const boost::shared_ptr<const Element> &e, Tags& t)
+void HootApiDbWriter::_addElementTags(const std::shared_ptr<const Element>& e, Tags& t)
 {
   LOG_TRACE("Adding element tags to: " << e->getElementId());
   if (!t.contains(MetadataTags::HootStatus()))
@@ -107,19 +107,20 @@ void HootApiDbWriter::finalizePartial()
     _hootdb.endChangeset();
     if (_hootdb.inTransaction())
       _hootdb.commit();
+    _hootdb.updateImportSequences();
     if (_hootdb.isOpen())
       _hootdb.close();
     _open = false;
   }
 }
 
-bool HootApiDbWriter::isSupported(QString urlStr)
+bool HootApiDbWriter::isSupported(const QString& urlStr)
 {
   QUrl url(urlStr);
   return _hootdb.isSupported(url) && !_copyBulkInsertActivated;
 }
 
-void HootApiDbWriter::open(QString urlStr)
+void HootApiDbWriter::open(const QString& urlStr)
 {
   LOG_DEBUG("Opening database writer for: " << urlStr << "...");
 
@@ -160,14 +161,14 @@ void HootApiDbWriter::open(QString urlStr)
   _startNewChangeSet();
 }
 
-QString HootApiDbWriter::_getMapNameFromUrl(const QString urlStr) const
+QString HootApiDbWriter::_getMapNameFromUrl(const QString& urlStr) const
 {
   QUrl url(urlStr);
   const QStringList pList = url.path().split("/");
   return pList[2];
 }
 
-long HootApiDbWriter::_openDb(const QString urlStr/*, const bool forDelete*/)
+long HootApiDbWriter::_openDb(const QString& urlStr)
 {
   if (!isSupported(urlStr))
   {
@@ -204,7 +205,7 @@ long HootApiDbWriter::_openDb(const QString urlStr/*, const bool forDelete*/)
   return _hootdb.getMapIdByNameForCurrentUser(mapName);
 }
 
-void HootApiDbWriter::deleteMap(QString urlStr)
+void HootApiDbWriter::deleteMap(const QString& urlStr)
 {
   LOG_DEBUG("Deleting map at " + urlStr << "...");
 
@@ -341,7 +342,7 @@ void HootApiDbWriter::setConfiguration(const Settings &conf)
   setIncludeCircularError(configOptions.getWriterIncludeCircularErrorTags());
   setRemap(configOptions.getHootapiDbWriterRemapIds());
   setCopyBulkInsertActivated(configOptions.getHootapiDbWriterCopyBulkInsert());
-  setJobId(configOptions.getHootapiDbWriterJobId());
+  setJobId(configOptions.getJobId());
 }
 
 void HootApiDbWriter::_startNewChangeSet()
@@ -372,12 +373,12 @@ void HootApiDbWriter::writeChange(const Change& change)
   }
 }
 
-void HootApiDbWriter::_createElement(ConstElementPtr element)
+void HootApiDbWriter::_createElement(const ConstElementPtr& element)
 {
   switch (element->getElementType().getEnum())
   {
     case ElementType::Node:
-      _hootdb.insertNode(boost::dynamic_pointer_cast<const Node>(element));
+      _hootdb.insertNode(std::dynamic_pointer_cast<const Node>(element));
       break;
     //only supporting nodes for now
     default:
@@ -385,12 +386,12 @@ void HootApiDbWriter::_createElement(ConstElementPtr element)
   }
 }
 
-void HootApiDbWriter::_modifyElement(ConstElementPtr element)
+void HootApiDbWriter::_modifyElement(const ConstElementPtr& element)
 {
   switch (element->getElementType().getEnum())
   {
     case ElementType::Node:
-      _hootdb.updateNode(boost::dynamic_pointer_cast<const Node>(element));
+      _hootdb.updateNode(std::dynamic_pointer_cast<const Node>(element));
       break;
     //only supporting nodes for now
     default:
@@ -398,12 +399,12 @@ void HootApiDbWriter::_modifyElement(ConstElementPtr element)
   }
 }
 
-void HootApiDbWriter::_deleteElement(ConstElementPtr element)
+void HootApiDbWriter::_deleteElement(const ConstElementPtr& element)
 {
   switch (element->getElementType().getEnum())
   {
     case ElementType::Node:
-      _hootdb.deleteNode(boost::dynamic_pointer_cast<const Node>(element));
+      _hootdb.deleteNode(std::dynamic_pointer_cast<const Node>(element));
       break;
     //only supporting nodes for now
     default:
@@ -435,12 +436,6 @@ void HootApiDbWriter::writePartial(const ConstNodePtr& n)
   }
   else
   {
-    if (n->getId() < 1)
-    {
-      throw HootException("Writing non-positive IDs without remap is not supported by "
-                          "HootApiDbWriter.");
-    }
-
     LOG_VART(n->getId());
     _hootdb.insertNode(n->getId(), n->getY(), n->getX(), tags);
   }
@@ -473,10 +468,6 @@ void HootApiDbWriter::writePartial(const ConstWayPtr& w)
     {
       _hootdb.insertWay(wayId, tags);
     }
-  }
-  else if (w->getId() < 1)
-  {
-    throw HootException("Non-positive IDs are not supported by HootApiDbWriter.");
   }
   else
   {
@@ -520,11 +511,6 @@ void HootApiDbWriter::writePartial(const ConstRelationPtr& r)
   }
   else
   {
-    if (r->getId() < 1)
-    {
-      throw HootException("Non-positive IDs are not supported by HootApiDbWriter without remapping");
-    }
-
     _hootdb.insertRelation(r->getId(), tags);
     relationId = r->getId();
   }

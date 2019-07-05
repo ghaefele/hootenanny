@@ -51,7 +51,7 @@ QString CalculateHashVisitor::toJsonString(const ConstElementPtr& e)
     throw NotImplementedException("Only nodes are supported at this time.");
   }
 
-  ConstNodePtr n = boost::dynamic_pointer_cast<const Node>(e);
+  ConstNodePtr n = std::dynamic_pointer_cast<const Node>(e);
 
   QString result = "{\"type\":\"Feature\",\"properties\":{\"type\":\"node\",\"tags\":{";
 
@@ -101,7 +101,7 @@ QByteArray CalculateHashVisitor::toHash(const ConstElementPtr& e)
 {
   QCryptographicHash hash(QCryptographicHash::Sha1);
 
-  hash.addData(toJsonString(e).toAscii().constData());
+  hash.addData(toJsonString(e).toLatin1().constData());
 
   return hash.result();
 }

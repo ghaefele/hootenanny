@@ -48,7 +48,7 @@ XmlChangeset::XmlChangeset()
   : _nodes(ChangesetType::TypeMax),
     _ways(ChangesetType::TypeMax),
     _relations(ChangesetType::TypeMax),
-    _maxChangesetSize(ConfigOptions().getChangesetApidbMaxSize()),
+    _maxChangesetSize(ConfigOptions().getChangesetApidbSizeMax()),
     _sentCount(0),
     _processedCount(0),
     _failedCount(0)
@@ -59,7 +59,7 @@ XmlChangeset::XmlChangeset(const QList<QString> &changesets)
   : _nodes(ChangesetType::TypeMax),
     _ways(ChangesetType::TypeMax),
     _relations(ChangesetType::TypeMax),
-    _maxChangesetSize(ConfigOptions().getChangesetApidbMaxSize()),
+    _maxChangesetSize(ConfigOptions().getChangesetApidbSizeMax()),
     _sentCount(0),
     _processedCount(0),
     _failedCount(0)
@@ -159,10 +159,10 @@ void XmlChangeset::loadElements(QXmlStreamReader& reader, ChangesetType changese
       else if (name == "nd")
       {
         long id = reader.attributes().value("ref").toString().toLong();
-        boost::dynamic_pointer_cast<XmlWay>(element)->addNode(id);
+        std::dynamic_pointer_cast<XmlWay>(element)->addNode(id);
       }
       else if (name == "member")
-        boost::dynamic_pointer_cast<XmlRelation>(element)->addMember(reader.attributes());
+        std::dynamic_pointer_cast<XmlRelation>(element)->addMember(reader.attributes());
     }
     //  End element for create/modify/delete
     else if (type == QXmlStreamReader::EndElement)

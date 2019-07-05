@@ -23,7 +23,7 @@
  * copyrights will be updated automatically.
  *
  * @copyright Copyright (C) 2005 VividSolutions (http://www.vividsolutions.com/)
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 // Hoot
@@ -39,10 +39,8 @@ using namespace std;
 namespace hoot
 {
 
-MultiLineStringLocation::MultiLineStringLocation(ConstOsmMapPtr map,
-                                                 ConstRelationPtr relation,
-                                                 const int wayIndex,
-                                                 const WayLocation& wayLocation)
+MultiLineStringLocation::MultiLineStringLocation(ConstOsmMapPtr map, ConstRelationPtr relation,
+                                                 const int wayIndex, const WayLocation& wayLocation)
 {
   if (relation->getMembers().size() == 0)
   {
@@ -81,7 +79,7 @@ MultiLineStringLocation::MultiLineStringLocation(ConstOsmMapPtr map,
       throw HootException(
         "Feature splitting for multi-line string relations may only occur on relations which contain only ways.");
     }
-    ConstWayPtr way = boost::dynamic_pointer_cast<const Way>(element);
+    ConstWayPtr way = std::dynamic_pointer_cast<const Way>(element);
     _waySublineString.addSubline(
       WaySubline(
         WayLocation(map, way, 0, 0.0),

@@ -30,6 +30,7 @@
 // hoot
 #include <hoot/core/util/Configurable.h>
 #include <hoot/core/visitors/ElementOsmMapVisitor.h>
+#include <hoot/core/info/OperationStatusInfo.h>
 
 namespace hoot
 {
@@ -37,7 +38,8 @@ namespace hoot
 /**
  * Renames all keys for all elements with the specified key to a new key
  */
-class TagRenameKeyVisitor : public ElementOsmMapVisitor, public Configurable
+class TagRenameKeyVisitor : public ElementOsmMapVisitor, public Configurable,
+  public OperationStatusInfo
 {
 public:
 
@@ -45,13 +47,18 @@ public:
 
   TagRenameKeyVisitor();
 
-  TagRenameKeyVisitor(const QString oldKey, const QString newKey);
+  TagRenameKeyVisitor(const QString& oldKey, const QString& newKey);
 
-  virtual void visit(const boost::shared_ptr<Element>& e) override;
+  virtual void visit(const std::shared_ptr<Element>& e) override;
 
   virtual void setConfiguration(const Settings& conf);
 
   virtual QString getDescription() const { return "Renames tag keys"; }
+
+  virtual QString getInitStatusMessage() const { return "Renaming tag keys..."; }
+
+  virtual QString getCompletedStatusMessage() const
+  { return "Renamed " + QString::number(_numAffected) + " tag keys"; }
 
 private:
 

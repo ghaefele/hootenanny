@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "RemoveUnknownVisitor.h"
 
@@ -36,10 +36,13 @@ namespace hoot
 HOOT_FACTORY_REGISTER(ElementVisitor, RemoveUnknown1Visitor)
 HOOT_FACTORY_REGISTER(ElementVisitor, RemoveUnknown2Visitor)
 
-void RemoveUnknownVisitor::visit(const boost::shared_ptr<Element>& e)
+void RemoveUnknownVisitor::visit(const std::shared_ptr<Element>& e)
 {
   if (e->getStatus() == _status)
+  {
     RecursiveElementRemover(e->getElementId()).apply(_map->shared_from_this());
+    _numAffected++;
+  }
 }
 
 }

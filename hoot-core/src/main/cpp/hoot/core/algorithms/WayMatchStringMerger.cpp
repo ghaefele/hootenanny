@@ -38,7 +38,7 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int WayMatchStringMerger::logWarnCount = 0;
+int WayMatchStringMerger::logWarnCount = 0;
 
 QString WayMatchStringMerger::SublineMapping::toString() const
 {
@@ -52,7 +52,7 @@ QString WayMatchStringMerger::SublineMapping::toString() const
 }
 
 WayMatchStringMerger::WayMatchStringMerger(const OsmMapPtr& map,
-  WayMatchStringMappingPtr mapping, vector<pair<ElementId, ElementId> > &replaced) :
+  WayMatchStringMappingPtr mapping, vector<pair<ElementId, ElementId>> &replaced) :
   _map(map),
   _mapping(mapping),
   _replaced(replaced)
@@ -201,9 +201,8 @@ WayLocation WayMatchStringMerger::_findNodeLocation2(WayStringPtr ws, ElementId 
 
 void WayMatchStringMerger::mergeIntersection(ElementId scrapNodeId)
 {
-  LOG_TRACE("Merging intersection...");
+  LOG_TRACE("Merging intersection for scrap: " << scrapNodeId << "...");
 
-  LOG_VART(scrapNodeId);
   ConstNodePtr scrapNode = _map->getNode(scrapNodeId);
   LOG_VART(scrapNode->getElementId());
   LOG_VART(scrapNode->getX());
@@ -226,7 +225,7 @@ void WayMatchStringMerger::mergeIntersection(ElementId scrapNodeId)
       // split a way at a t-intersection, or when previous mergers produce
       // an intersection that is not split.
 
-      LOG_WARN("scrapNode should line up with the beginning or end of a way.");
+      LOG_DEBUG("scrapNode should line up with the beginning or end of a way.");
       LOG_VART(_mapping->getWayString1());
       LOG_VART(_mapping->getWayString2());
       LOG_VART(scrapNodeId);
@@ -236,7 +235,7 @@ void WayMatchStringMerger::mergeIntersection(ElementId scrapNodeId)
     }
     else if (logWarnCount == Log::getWarnMessageLimit())
     {
-      LOG_WARN(className() << ": " << Log::LOG_WARN_LIMIT_REACHED_MESSAGE);
+      LOG_DEBUG(className() << ": " << Log::LOG_WARN_LIMIT_REACHED_MESSAGE);
     }
     logWarnCount++;
   }
@@ -250,9 +249,8 @@ void WayMatchStringMerger::mergeIntersection(ElementId scrapNodeId)
 
 void WayMatchStringMerger::mergeNode(ElementId scrapNode)
 {
-  LOG_TRACE("Merging node...");
+  LOG_TRACE("Merging node for scrap: " << scrapNode << "...");
 
-  LOG_VART(scrapNode);
   LOG_VART(_map->getNode(scrapNode));
   // find the first instance of scrapNode in way 2
   WayLocation wl2 = _findNodeLocation2(_mapping->getWayString2(), scrapNode);
@@ -369,7 +367,7 @@ void WayMatchStringMerger::replaceScraps()
   // Determine which bits in secondary will be replaced by bits in the primary. Once we have that
   // we can replace them all at once, delete them, and update the _replaced structure.
 
-  QMap< WayPtr, QList<ElementPtr> > w2ToW1;
+  QMap<WayPtr, QList<ElementPtr>> w2ToW1;
 
   foreach (SublineMappingPtr sm, _sublineMappingOrder)
   {
@@ -386,7 +384,7 @@ void WayMatchStringMerger::replaceScraps()
     w2ToW1[w2].append(w1);
   }
 
-  for (QMap< WayPtr, QList<ElementPtr> >::iterator it = w2ToW1.begin(); it != w2ToW1.end(); ++it)
+  for (QMap<WayPtr, QList<ElementPtr>>::iterator it = w2ToW1.begin(); it != w2ToW1.end(); ++it)
   {
     LOG_TRACE("Replacing: " << it.key() << " with value: " << it.value());
     _map->replace(it.key(), it.value());

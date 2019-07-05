@@ -2,7 +2,9 @@
 # General statistics and machine learning utilities
 ##########################
 
-QT += xml
+QT += xml \
+    testlib \
+    concurrent \
 
 TEMPLATE = lib
 win32:CONFIG += dll
@@ -14,7 +16,6 @@ include(../Configure.pri)
 CONFIG -= flat
 
 CONFIG += rtti \
-    qtestlib \
     debug
 
 DESTDIR = ../lib/
@@ -62,7 +63,6 @@ HEADERS += \
     src/main/cpp/tgs/HashMap.h \
     src/main/cpp/tgs/LruCache.h \
     src/main/cpp/tgs/Progress.h \
-    src/main/cpp/tgs/SharedPtr.h \
     src/main/cpp/tgs/StreamUtils.h \
     src/main/cpp/tgs/StreamUtils.hh \
     src/main/cpp/tgs/TgsException.h \

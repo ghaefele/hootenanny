@@ -45,6 +45,8 @@ HighwayReviewCleanerOp::HighwayReviewCleanerOp()
 
 void HighwayReviewCleanerOp::apply(OsmMapPtr& map)
 {
+  _numAffected = 0;
+
   RelationMap relations = map->getRelations();
 
   ReviewMarker reviewMarker;
@@ -81,7 +83,7 @@ bool HighwayReviewCleanerOp::_isBadHighwayReview(OsmMapPtr& map,
 
       // By using the match factory instead of explicity calling the highway match we're more
       // robust to changes in the factory configuration that may occur at runtime.
-      boost::shared_ptr<Match> m(MatchFactory::getInstance().createMatch(map, eid1, eid2));
+      std::shared_ptr<Match> m(MatchFactory::getInstance().createMatch(map, eid1, eid2));
       // if we failed to find a match of any kind
       if (!m.get())
       {

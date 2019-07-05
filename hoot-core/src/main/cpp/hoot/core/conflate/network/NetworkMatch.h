@@ -48,7 +48,8 @@ public:
 
   NetworkMatch();
   NetworkMatch(const ConstNetworkDetailsPtr& details, ConstEdgeMatchPtr edgeMatch,
-    double score, ConstMatchThresholdPtr mt);
+    double score, ConstMatchThresholdPtr mt, double scoringFunctionMax,
+    double scoringFunctionCurveMidpointX, double scoringFunctionCurveSteepness);
 
   /**
    * Classifies the match and returns a classification object.
@@ -99,7 +100,7 @@ public:
    * In general Unknown1 should be the status of the first element and Unknown2 the status of the
    * second element.
    */
-  virtual std::set< std::pair<ElementId, ElementId> > getMatchPairs() const { return _pairs; }
+  virtual std::set<std::pair<ElementId, ElementId>> getMatchPairs() const { return _pairs; }
 
   virtual QString toString() const;
 

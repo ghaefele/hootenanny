@@ -42,14 +42,12 @@ namespace hoot
 
 WaySubline::WaySubline()
 {
-
 }
 
 WaySubline::WaySubline(const WaySubline& from) :
   _start(from.getStart()),
   _end(from.getEnd())
 {
-
 }
 
 WaySubline::WaySubline(const WaySubline& from, const ConstOsmMapPtr& newMap)
@@ -152,7 +150,7 @@ WayPtr WaySubline::toWay(const OsmMapPtr& map, GeometryConverter::NodeFactory* n
 {
   ConstWayPtr way = _start.getWay();
 
-  boost::shared_ptr<GeometryConverter::NodeFactory> nfPtr;
+  std::shared_ptr<GeometryConverter::NodeFactory> nfPtr;
   if (nf == 0)
   {
     nf = new FindNodesInWayFactory(way);

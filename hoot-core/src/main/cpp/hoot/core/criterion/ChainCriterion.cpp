@@ -22,13 +22,14 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #include "ChainCriterion.h"
 
 // hoot
 #include <hoot/core/util/Factory.h>
 #include <hoot/core/schema/OsmSchema.h>
+#include <hoot/core/util/Log.h>
 
 using namespace std;
 
@@ -37,8 +38,8 @@ namespace hoot
 
 HOOT_FACTORY_REGISTER(ElementCriterion, ChainCriterion)
 
-ChainCriterion::ChainCriterion(boost::shared_ptr<ElementCriterion> child1,
-                               boost::shared_ptr<ElementCriterion> child2)
+ChainCriterion::ChainCriterion(const ElementCriterionPtr& child1,
+                               const ElementCriterionPtr& child2)
 {
   _criteria.push_back(child1);
   _criteria.push_back(child2);
@@ -46,28 +47,28 @@ ChainCriterion::ChainCriterion(boost::shared_ptr<ElementCriterion> child1,
 
 ChainCriterion::ChainCriterion(ElementCriterion* child1, ElementCriterion* child2)
 {
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child1));
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child2));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child1));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child2));
 }
 
 ChainCriterion::ChainCriterion(ElementCriterion* child1, ElementCriterionPtr child2)
 {
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child1));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child1));
   _criteria.push_back(child2);
 }
 
 ChainCriterion::ChainCriterion(ElementCriterion* child1, ElementCriterion* child2,
                                ElementCriterion* child3)
 {
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child1));
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child2));
-  _criteria.push_back(boost::shared_ptr<ElementCriterion>(child3));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child1));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child2));
+  _criteria.push_back(std::shared_ptr<ElementCriterion>(child3));
 }
 
-ChainCriterion::ChainCriterion(vector< boost::shared_ptr<ElementCriterion> > criteria)
+ChainCriterion::ChainCriterion(const std::vector<std::shared_ptr<ElementCriterion>>& criteria)
 {
   for (size_t i = 0; i < criteria.size(); i++)
-    _criteria.push_back(boost::shared_ptr<ElementCriterion>(criteria[i]->clone()));
+    _criteria.push_back(std::shared_ptr<ElementCriterion>(criteria[i]->clone()));
 }
 
 void ChainCriterion::addCriterion(const ElementCriterionPtr& e)
@@ -84,7 +85,6 @@ bool ChainCriterion::isSatisfied(const ConstElementPtr& e) const
       return false;
     }
   }
-
   return true;
 }
 

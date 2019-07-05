@@ -26,21 +26,19 @@
  */
 #include "OsmXmlWriter.h"
 
-// Boost
-using namespace boost;
-
 // Hoot
-#include <hoot/core/elements/OsmMap.h>
 #include <hoot/core/elements/Node.h>
+#include <hoot/core/elements/OsmMap.h>
+#include <hoot/core/elements/OsmUtils.h>
 #include <hoot/core/elements/Relation.h>
 #include <hoot/core/elements/Tags.h>
 #include <hoot/core/elements/Way.h>
 #include <hoot/core/index/OsmMapIndex.h>
+#include <hoot/core/schema/MetadataTags.h>
 #include <hoot/core/util/ConfigOptions.h>
 #include <hoot/core/util/Exception.h>
 #include <hoot/core/util/Factory.h>
-#include <hoot/core/schema/MetadataTags.h>
-#include <hoot/core/elements/OsmUtils.h>
+#include <hoot/core/util/StringUtils.h>
 #include <hoot/core/visitors/CalculateMapBoundsVisitor.h>
 
 // Qt
@@ -55,22 +53,21 @@ using namespace std;
 namespace hoot
 {
 
-unsigned int OsmXmlWriter::logWarnCount = 0;
+int OsmXmlWriter::logWarnCount = 0;
 
 HOOT_FACTORY_REGISTER(OsmMapWriter, OsmXmlWriter)
 
-OsmXmlWriter::OsmXmlWriter()
-  : _formatXml(ConfigOptions().getOsmMapWriterFormatXml()),
-    _includeIds(false),
-    _includeDebug(ConfigOptions().getWriterIncludeDebugTags()),
-    _includePointInWays(false),
-    _includeCompatibilityTags(true),
-    _includePid(false),
-    _textStatus(ConfigOptions().getWriterTextStatus()),
-    _osmSchema(ConfigOptions().getOsmMapWriterSchema()),
-    _precision(ConfigOptions().getWriterPrecision()),
-    _encodingErrorCount(0),
-    _includeCircularErrorTags(ConfigOptions().getWriterIncludeCircularErrorTags())
+OsmXmlWriter::OsmXmlWriter() :
+_formatXml(ConfigOptions().getOsmMapWriterFormatXml()),
+_includeDebug(ConfigOptions().getWriterIncludeDebugTags()),
+_includePointInWays(false),
+_includeCompatibilityTags(true),
+_includePid(false),
+_osmSchema(ConfigOptions().getOsmMapWriterSchema()),
+_precision(ConfigOptions().getWriterPrecision()),
+_encodingErrorCount(0),
+_numWritten(0),
+_statusUpdateInterval(ConfigOptions().getTaskStatusUpdateInterval())
 {
 }
 
@@ -119,7 +116,7 @@ QString OsmXmlWriter::removeInvalidCharacters(const QString& s)
   return result;
 }
 
-void OsmXmlWriter::open(QString url)
+void OsmXmlWriter::open(const QString& url)
 {
   QFile* f = new QFile();
   _fp.reset(f);
@@ -132,18 +129,20 @@ void OsmXmlWriter::open(QString url)
   _initWriter();
 
   _bounds.init();
+
+  _numWritten = 0;
 }
 
 void OsmXmlWriter::close()
 {
-  if (_writer.get())
+  if (_fp.get() && _fp->isOpen())
   {
-    _writer->writeEndElement();
-    _writer->writeEndDocument();
-  }
+    if (_writer.get())
+    {
+      _writer->writeEndElement();
+      _writer->writeEndDocument();
+    }
 
-  if (_fp.get())
-  {
     _fp->close();
   }
 }
@@ -157,7 +156,7 @@ QString OsmXmlWriter::toString(const ConstOsmMapPtr& map, const bool formatXml)
 {
   OsmXmlWriter writer;
   writer.setFormatXml(formatXml);
-  // this will be deleted by the _fp boost::shared_ptr
+  // this will be deleted by the _fp std::shared_ptr
   QBuffer* buf = new QBuffer();
   writer._fp.reset(buf);
   if (!writer._fp->open(QIODevice::WriteOnly | QIODevice::Text))
@@ -200,13 +199,13 @@ void OsmXmlWriter::_initWriter()
   _writer->writeAttribute("generator", HOOT_PACKAGE_NAME);
 }
 
-void OsmXmlWriter::write(ConstOsmMapPtr map, const QString& path)
+void OsmXmlWriter::write(const ConstOsmMapPtr& map, const QString& path)
 {
   open(path);
   write(map);
 }
 
-void OsmXmlWriter::write(ConstOsmMapPtr map)
+void OsmXmlWriter::write(const ConstOsmMapPtr& map)
 {
   if (!_fp.get() || _fp->isWritable() == false)
   {
@@ -219,6 +218,10 @@ void OsmXmlWriter::write(ConstOsmMapPtr map)
   {
     _initWriter();
   }
+
+  //  Debug maps get a bunch of debug settings setup here
+  if (getIsDebugMap())
+    _overrideDebugSettings();
 
   // The coord sys and schema entries don't get written to streamed output b/c we don't have
   // the map object to read the coord sys from.
@@ -241,6 +244,7 @@ void OsmXmlWriter::write(ConstOsmMapPtr map)
     _writer->writeAttribute("schema", _osmSchema);
   }
 
+  //  Osmosis chokes on the bounds being written at the end of the file, do it first
   const geos::geom::Envelope bounds = CalculateMapBoundsVisitor::getGeosBounds(map);
   _writeBounds(bounds);
 
@@ -292,9 +296,12 @@ void OsmXmlWriter::_writeMetadata(const Element *e)
 
 void OsmXmlWriter::_writeTags(const ConstElementPtr& element)
 {
-  const ElementType type = element->getElementType();
+  ElementPtr elementClone(element->clone());
+  _addExportTagsVisitor.visit(elementClone);
+
+  const ElementType type = elementClone->getElementType();
   assert(type != ElementType::Unknown);
-  const Tags& tags = element->getTags();
+  const Tags& tags = elementClone->getTags();
 
   for (Tags::const_iterator it = tags.constBegin(); it != tags.constEnd(); ++it)
   {
@@ -305,32 +312,15 @@ void OsmXmlWriter::_writeTags(const ConstElementPtr& element)
       _writer->writeStartElement("tag");
       LOG_VART(key);
       _writer->writeAttribute("k", removeInvalidCharacters(key));
-      if (key == MetadataTags::HootStatus() &&
-          //status check here only for nodes/ways; should relation have this check too?
-          (type == ElementType::Relation ||
-           (type != ElementType::Relation && element->getStatus() != Status::Invalid)))
-      {
-        if (_textStatus)
-        {
-          _writer->writeAttribute("v", element->getStatus().toTextStatus());
-        }
-        else
-        {
-          _writer->writeAttribute("v", element->getStatus().toCompatString());
-        }
-      }
-      else
-      {
-        LOG_VART(val);
-        _writer->writeAttribute("v", removeInvalidCharacters(val));
-      }
+      LOG_VART(val);
+      _writer->writeAttribute("v", removeInvalidCharacters(val));
       _writer->writeEndElement();
     }
   }
 
   if (type == ElementType::Relation)
   {
-    ConstRelationPtr relation = boost::dynamic_pointer_cast<const Relation>(element);
+    ConstRelationPtr relation = std::dynamic_pointer_cast<const Relation>(elementClone);
     if (relation->getType() != "")
     {
       _writer->writeStartElement("tag");
@@ -340,59 +330,10 @@ void OsmXmlWriter::_writeTags(const ConstElementPtr& element)
     }
   }
 
-  // If we already have a "hoot:status" tag, make sure it contains the actual status of the element.
-  // See writeNodes for more info
-  if (!tags.contains(MetadataTags::HootStatus()))
-  {
-    if (_textStatus &&
-        //non debug count check for nodes only
-        (type != ElementType::Node ||
-         (type == ElementType::Node && tags.getNonDebugCount() > 0)))
-    {
-      _writer->writeStartElement("tag");
-      _writer->writeAttribute("k", MetadataTags::HootStatus());
-      _writer->writeAttribute("v", element->getStatus().toTextStatus());
-      _writer->writeEndElement();
-    }
-    else if (_includeDebug)
-    {
-      _writer->writeStartElement("tag");
-      _writer->writeAttribute("k", MetadataTags::HootStatus());
-      if (type == ElementType::Node && _textStatus)
-      {
-        _writer->writeAttribute("v", element->getStatus().toTextStatus());
-      }
-      else
-      {
-        _writer->writeAttribute("v", element->getStatus().toCompatString());
-      }
-      _writer->writeEndElement();
-    }
-  }
-
-  if (element->hasCircularError() && _includeCircularErrorTags &&
-      //non debug count check for nodes only
-      (type != ElementType::Node ||
-       (type == ElementType::Node && tags.getNonDebugCount() > 0)))
-  {
-    _writer->writeStartElement("tag");
-    _writer->writeAttribute("k", MetadataTags::ErrorCircular());
-    _writer->writeAttribute("v", QString("%1").arg(element->getCircularError()));
-    _writer->writeEndElement();
-  }
-
-  if (_includeDebug || _includeIds)
-  {
-    _writer->writeStartElement("tag");
-    _writer->writeAttribute("k", MetadataTags::HootId());
-    _writer->writeAttribute("v", QString("%1").arg(element->getId()));
-    _writer->writeEndElement();
-  }
-
   //  Output the PID as a tag if desired for debugging purposes
   if (_includePid && type == ElementType::Way)
   {
-    ConstWayPtr way = boost::dynamic_pointer_cast<const Way>(element);
+    ConstWayPtr way = std::dynamic_pointer_cast<const Way>(elementClone);
     if (way->hasPid())
     {
       _writer->writeStartElement("tag");
@@ -492,6 +433,12 @@ void OsmXmlWriter::writePartial(const ConstNodePtr& n)
   _writer->writeEndElement();
 
   _bounds.expandToInclude(n->getX(), n->getY());
+
+  _numWritten++;
+  if (_numWritten % (_statusUpdateInterval * 10) == 0)
+  {
+    PROGRESS_INFO("Wrote " << StringUtils::formatLargeNumber(_numWritten) << " elements to output.");
+  }
 }
 
 void OsmXmlWriter::_writePartialIncludePoints(const ConstWayPtr& w, ConstOsmMapPtr map)
@@ -528,60 +475,9 @@ void OsmXmlWriter::_writePartialIncludePoints(const ConstWayPtr& w, ConstOsmMapP
     {
       _writer->writeStartElement("tag");
       _writer->writeAttribute("k", removeInvalidCharacters(key));
-
-      if (key == MetadataTags::HootStatus() && w->getStatus() != Status::Invalid)
-      {
-        if (_textStatus)
-        {
-          _writer->writeAttribute("v", w->getStatus().toTextStatus());
-        }
-        else
-        {
-          _writer->writeAttribute("v", w->getStatus().toCompatString());
-        }
-      }
-      else
-      {
-        _writer->writeAttribute("v", removeInvalidCharacters(val));
-      }
+      _writer->writeAttribute("v", removeInvalidCharacters(val));
       _writer->writeEndElement();
     }
-  }
-
-  // Logic: If we already have a "hoot:status" tag, make sure it contains the actual
-  // status of the element. See writeNodes for more info
-  if (! tags.contains(MetadataTags::HootStatus()))
-  {
-    if (_textStatus)
-    {
-      _writer->writeStartElement("tag");
-      _writer->writeAttribute("k", MetadataTags::HootStatus());
-      _writer->writeAttribute("v", w->getStatus().toTextStatus());
-      _writer->writeEndElement();
-    }
-    else if (_includeDebug)
-    {
-      _writer->writeStartElement("tag");
-      _writer->writeAttribute("k", MetadataTags::HootStatus());
-      _writer->writeAttribute("v", w->getStatus().toCompatString());
-      _writer->writeEndElement();
-    }
-  }
-
-  if (w->hasCircularError() && _includeCircularErrorTags)
-  {
-    _writer->writeStartElement("tag");
-    _writer->writeAttribute("k", MetadataTags::ErrorCircular());
-    _writer->writeAttribute("v", QString("%1").arg(w->getCircularError()));
-    _writer->writeEndElement();
-  }
-
-  if (_includeDebug || _includeIds)
-  {
-    _writer->writeStartElement("tag");
-    _writer->writeAttribute("k", MetadataTags::HootId());
-    _writer->writeAttribute("v", QString("%1").arg(w->getId()));
-    _writer->writeEndElement();
   }
 
   _writer->writeEndElement();
@@ -612,6 +508,12 @@ void OsmXmlWriter::writePartial(const ConstWayPtr& w)
   _writeTags(w);
 
   _writer->writeEndElement();
+
+  _numWritten++;
+  if (_numWritten % (_statusUpdateInterval * 10) == 0)
+  {
+    PROGRESS_INFO("Wrote " << StringUtils::formatLargeNumber(_numWritten) << " elements to output.");
+  }
 }
 
 void OsmXmlWriter::writePartial(const ConstRelationPtr& r)
@@ -638,13 +540,25 @@ void OsmXmlWriter::writePartial(const ConstRelationPtr& r)
   _writeTags(r);
 
   _writer->writeEndElement();
+
+  _numWritten++;
+  if (_numWritten % (_statusUpdateInterval * 10) == 0)
+  {
+    PROGRESS_INFO("Wrote " << StringUtils::formatLargeNumber(_numWritten) << " elements to output.");
+  }
 }
 
 void OsmXmlWriter::finalizePartial()
 {
-  //osmosis chokes on the bounds being written at the end of the file, so not writing it at all
-  //_writeBounds(_bounds);
   close();
+}
+
+void OsmXmlWriter::_overrideDebugSettings()
+{
+  // include circular error, text status and debug
+  _addExportTagsVisitor.overrideDebugSettings();
+  //  Include parent ID tag
+  _includePid = true;
 }
 
 }

@@ -23,16 +23,13 @@
  * copyrights will be updated automatically.
  *
  * @copyright Copyright (C) 2005 VividSolutions (http://www.vividsolutions.com/)
- * @copyright Copyright (C) 2015, 2016, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2016, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef __WAY_LOCATION_H__
 #define __WAY_LOCATION_H__
 
 // GEOS
 #include <geos/geom/Coordinate.h>
-
-// TGS
-#include <tgs/SharedPtr.h>
 
 // Hoot
 #include <hoot/core/elements/OsmMap.h>
@@ -58,7 +55,7 @@ public:
 
   static std::string className() { return "hoot::WayLocation"; }
 
-  static unsigned int logWarnCount;
+  static int logWarnCount;
 
   // the suggested sloppy segment fraction distance from a node that is still considered on a node.
   static const double SLOPPY_EPSILON;
@@ -87,11 +84,11 @@ public:
                                    int segmentIndex1, double segmentFraction1);
 
   /**
-   *  Compares this object with the specified object for order.
+   * Compares this object with the specified object for order.
    *
-   *@param  other The WayLocation with which this WayLocation is being compared
-   *@return a negative integer, zero, or a positive integer as this WayLocation
-   *      is less than, equal to, or greater than the specified WayLocation.
+   * @param other The WayLocation with which this WayLocation is being compared
+   * @return a negative integer, zero, or a positive integer as this WayLocation is less than,
+   * equal to, or greater than the specified WayLocation.
    */
   int compareTo(const WayLocation& other) const;
 
@@ -101,11 +98,9 @@ public:
   static WayLocation createAtEndOfWay(const ConstOsmMapPtr &map, const ConstWayPtr way);
 
   /**
-   * Computes the location of a point a given length along a line segment.
-   * If the length exceeds the length of the line segment the last
-   * point of the segment is returned.
-   * If the length is negative the first point
-   * of the segment is returned.
+   * Computes the location of a point a given length along a line segment.  If the length exceeds
+   * the length of the line segment, the last point of the segment is returned.  If the length is
+   * negative, the first point of the segment is returned.
    *
    * @param p0 the first point of the line segment
    * @param p1 the last point of the line segment
@@ -121,7 +116,7 @@ public:
   const ConstWayPtr& getWay() const { return _way; }
 
   /**
-   * Returns the node at this WayLocation. If isNode() returns false this will thrown an exception.
+   * Returns the node at this WayLocation. If isNode() returns false, this will thrown an exception.
    */
   ConstNodePtr getNode(double epsilon = 0.0) const;
 
@@ -134,14 +129,16 @@ public:
    */
   bool isExtreme(double epsilon = 0.0) const { return isFirst(epsilon) || isLast(epsilon); }
 
-  bool isFirst(double epsilon = 0.0) const { return _segmentIndex == 0 && _segmentFraction <= epsilon; }
+  bool isFirst(double epsilon = 0.0) const
+  { return _segmentIndex == 0 && _segmentFraction <= epsilon; }
 
   bool isLast(double epsilon = 0.0) const;
 
   /**
    * If this is effectively on a node.
    */
-  bool isNode(double epsilon = 0.0) const { return _segmentFraction <= epsilon || _segmentFraction >= 1.0 - epsilon; }
+  bool isNode(double epsilon = 0.0) const
+  { return _segmentFraction <= epsilon || _segmentFraction >= 1.0 - epsilon; }
 
   bool isValid() const { return _segmentIndex != -1; }
 
@@ -162,7 +159,6 @@ protected:
   ConstWayPtr _way;
   int _segmentIndex;
   double _segmentFraction;
-
 };
 
 inline bool operator==(const WayLocation& a, const WayLocation& b)
@@ -201,8 +197,8 @@ inline uint qHash(const WayLocation& wl)
   return qHash(wl.toString());
 }
 
-typedef boost::shared_ptr<WayLocation> WayLocationPtr;
-typedef boost::shared_ptr<const WayLocation> ConstWayLocationPtr;
+typedef std::shared_ptr<WayLocation> WayLocationPtr;
+typedef std::shared_ptr<const WayLocation> ConstWayLocationPtr;
 
 }
 

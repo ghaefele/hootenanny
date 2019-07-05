@@ -47,6 +47,12 @@ const double PluginContext::UNSPECIFIED_DEFAULT = -999999e9;
 
 PluginContext::PluginContext()
 {
+  if (ConfigOptions().getHashSeedZero())
+  {
+    qSetGlobalQHashSeed(0);
+    LOG_TRACE("Qt hash seed set to 0 for plugin");
+  }
+
   Isolate* current = v8::Isolate::GetCurrent();
   HandleScope handleScope(current);
 
@@ -94,7 +100,7 @@ Local<Value> PluginContext::call(Handle<Object> obj, QString name, QList<QVarian
     throw InternalErrorException("The specified object is not a function: " + name);
   }
   Handle<Function> func = Handle<Function>::Cast(value);
-  vector< Handle<Value> > jsArgs(args.size());
+  vector<Handle<Value>> jsArgs(args.size());
 
   for (int i = 0; i < args.size(); i++)
   {

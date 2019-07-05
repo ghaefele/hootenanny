@@ -29,7 +29,7 @@
 #include <hoot/core/util/Factory.h>
 #include <hoot/core/cmd/BaseCommand.h>
 #include <hoot/core/algorithms/changeset/ChangesetDeriver.h>
-#include <hoot/core/algorithms/changeset/InMemoryElementSorter.h>
+#include <hoot/core/elements/InMemoryElementSorter.h>
 #include <hoot/core/io/OsmXmlChangesetFileWriter.h>
 #include <hoot/core/io/OsmApiDbSqlChangesetFileWriter.h>
 #include <hoot/core/io/OsmMapWriterFactory.h>
@@ -38,13 +38,14 @@
 #include <hoot/core/visitors/RemoveElementsVisitor.h>
 #include <hoot/core/visitors/CalculateHashVisitor2.h>
 #include <hoot/core/util/IoUtils.h>
-#include <hoot/core/algorithms/changeset/ExternalMergeElementSorter.h>
+#include <hoot/core/elements/ExternalMergeElementSorter.h>
 #include <hoot/core/io/ElementCriterionVisitorInputStream.h>
 #include <hoot/core/util/ConfigOptions.h>
 #include <hoot/core/io/OsmMapReaderFactory.h>
 #include <hoot/core/criterion/NotCriterion.h>
 #include <hoot/core/io/PartialOsmMapReader.h>
 #include <hoot/core/io/OsmPbfReader.h>
+#include <hoot/core/util/Progress.h>
 
 //GEOS
 #include <geos/geom/Envelope.h>
@@ -122,10 +123,23 @@ public:
     }
     LOG_VARD(_osmApiDbUrl);
 
+    const QString jobSource = "Derive Changeset";
+    // The number of steps here must be updated as you add/remove job steps in the logic.
+    const int numTotalTasks = 2;
+    int currentTaskNum = 1;
+    Progress progress(ConfigOptions().getJobId(), jobSource, Progress::JobState::Running);
+    const int maxFilePrintLength = ConfigOptions().getProgressVarPrintLengthMax();
+
+    progress.set(
+      0.0,
+      "Deriving output changeset: ..." + output.right(maxFilePrintLength) + " from inputs: ..." +
+      input1.right(maxFilePrintLength) + " and ..." + input2.right(maxFilePrintLength) + "...");
+
     _parseBuffer();
 
     const bool singleInput = input2.trimmed().isEmpty();
 
+    progress.set((float)(currentTaskNum - 1) / (float)numTotalTasks, "Sorting features...");
     ElementInputStreamPtr sortedElements1;
     ElementInputStreamPtr sortedElements2;
     if (!singleInput)
@@ -142,7 +156,16 @@ public:
       sortedElements1 = _getEmptyInputStream();
       sortedElements2 = _getSortedElements(input1, Status::Unknown2);
     }
+    currentTaskNum++;
+
+    // We could make this progress reporting more granular, but for in-memory changesets only.
+    progress.set((float)(currentTaskNum - 1) / (float)numTotalTasks, "Writing changeset...");
     _streamChangesetOutput(sortedElements1, sortedElements2, output);
+    currentTaskNum++;
+
+    progress.set(
+      1.0, Progress::JobState::Successful,
+      "Changeset written to: ..." + output.right(maxFilePrintLength));
 
     return 0;
   }
@@ -192,12 +215,12 @@ private:
     }
   }
 
-  bool _isSupportedOutputFormat(const QString format) const
+  bool _isSupportedOutputFormat(const QString& format) const
   {
     return format.endsWith(".osc") || format.endsWith(".osc.sql");
   }
 
-  bool _inputIsSorted(const QString input) const
+  bool _inputIsSorted(const QString& input) const
   {
     //Streaming db inputs actually do not come back sorted, despite the order by id clause
     //in the query (see ApiDb::selectElements).  Otherwise, we'd skip sorting them too.
@@ -213,7 +236,7 @@ private:
   /*
    * Reads entire input into memory
    */
-  OsmMapPtr _readInputFully(const QString input, const Status& elementStatus)
+  OsmMapPtr _readInputFully(const QString& input, const Status& elementStatus)
   {
     LOG_INFO("Reading entire input into memory for " << input.right(25) << "...");
 
@@ -223,10 +246,11 @@ private:
     IoUtils::loadMap(map, input, true, elementStatus);
 
     //we don't want to include review relations
-    boost::shared_ptr<TagKeyCriterion> elementCriterion(
+    std::shared_ptr<TagKeyCriterion> elementCriterion(
       new TagKeyCriterion(MetadataTags::HootReviewNeeds()));
-    RemoveElementsVisitor removeElementsVisitor(elementCriterion);
+    RemoveElementsVisitor removeElementsVisitor;
     removeElementsVisitor.setRecursive(false);
+    removeElementsVisitor.addCriterion(elementCriterion);
     map->visitRw(removeElementsVisitor);
 
     //node comparisons require hashes be present on the elements
@@ -236,7 +260,7 @@ private:
     return map;
   }
 
-  ElementInputStreamPtr _getSortedElements(const QString input, const Status& status)
+  ElementInputStreamPtr _getSortedElements(const QString& input, const Status& status)
   {
     ElementInputStreamPtr sortedElements;
 
@@ -278,25 +302,25 @@ private:
     return InMemoryElementSorterPtr(new InMemoryElementSorter(OsmMapPtr(new OsmMap())));
   }
 
-  ElementInputStreamPtr _getFilteredInputStream(const QString input)
+  ElementInputStreamPtr _getFilteredInputStream(const QString& input)
   {
     LOG_DEBUG("Retrieving filtered input stream for: " << input.right(25) << "...");
 
     QList<ElementVisitorPtr> visitors;
     //we don't want to include review relations
-    boost::shared_ptr<ElementCriterion> elementCriterion(
+    std::shared_ptr<ElementCriterion> elementCriterion(
       new NotCriterion(
-        boost::shared_ptr<TagKeyCriterion>(
+        std::shared_ptr<TagKeyCriterion>(
           new TagKeyCriterion(MetadataTags::HootReviewNeeds()))));
     //node comparisons require hashes be present on the elements
-    visitors.append(boost::shared_ptr<CalculateHashVisitor2>(new CalculateHashVisitor2()));
+    visitors.append(std::shared_ptr<CalculateHashVisitor2>(new CalculateHashVisitor2()));
 
-    boost::shared_ptr<PartialOsmMapReader> reader =
-      boost::dynamic_pointer_cast<PartialOsmMapReader>(
+    std::shared_ptr<PartialOsmMapReader> reader =
+      std::dynamic_pointer_cast<PartialOsmMapReader>(
         OsmMapReaderFactory::createReader(input));
     reader->setUseDataSourceIds(true);
     reader->open(input);
-    ElementInputStreamPtr inputStream = boost::dynamic_pointer_cast<ElementInputStream>(reader);
+    ElementInputStreamPtr inputStream = std::dynamic_pointer_cast<ElementInputStream>(reader);
     ElementInputStreamPtr filteredInputStream(
       new ElementCriterionVisitorInputStream(inputStream, elementCriterion, visitors));
 
@@ -308,15 +332,15 @@ private:
     return InMemoryElementSorterPtr(new InMemoryElementSorter(map));
   }
 
-  ElementInputStreamPtr _sortElementsExternally(const QString input)
+  ElementInputStreamPtr _sortElementsExternally(const QString& input)
   {
-    boost::shared_ptr<ExternalMergeElementSorter> sorted(new ExternalMergeElementSorter());
+    std::shared_ptr<ExternalMergeElementSorter> sorted(new ExternalMergeElementSorter());
     sorted->sort(_getFilteredInputStream(input));
     return sorted;
   }
 
   void _streamChangesetOutput(ElementInputStreamPtr input1, ElementInputStreamPtr input2,
-                              const QString output)
+                              const QString& output)
   {
     LOG_INFO("Streaming changeset output to " << output.right(25) << "...")
 
@@ -338,15 +362,15 @@ private:
       OsmApiDbSqlChangesetFileWriter(QUrl(_osmApiDbUrl)).write(output, changesetDeriver);
     }
 
-    boost::shared_ptr<PartialOsmMapReader> partialReader1 =
-      boost::dynamic_pointer_cast<PartialOsmMapReader>(input1);
+    std::shared_ptr<PartialOsmMapReader> partialReader1 =
+      std::dynamic_pointer_cast<PartialOsmMapReader>(input1);
     if (partialReader1)
     {
       partialReader1->finalizePartial();
     }
     input1->close();
-    boost::shared_ptr<PartialOsmMapReader> partialReader2 =
-      boost::dynamic_pointer_cast<PartialOsmMapReader>(input2);
+    std::shared_ptr<PartialOsmMapReader> partialReader2 =
+      std::dynamic_pointer_cast<PartialOsmMapReader>(input2);
     if (partialReader2)
     {
       partialReader2->finalizePartial();

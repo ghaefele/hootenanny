@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef OSMMAPWRITER_H
 #define OSMMAPWRITER_H
@@ -39,7 +39,7 @@ public:
 
   static std::string className() { return "hoot::OsmMapWriter"; }
 
-  OsmMapWriter() {}
+  OsmMapWriter() : _debug(false) {}
 
   virtual ~OsmMapWriter() {}
 
@@ -48,18 +48,18 @@ public:
    * check. It will look to see if the URL is properly formatted (e.g. ends in .osm, or starts
    * with postgresql:, etc.)
    */
-  virtual bool isSupported(QString url) = 0;
+  virtual bool isSupported(const QString& url) = 0;
 
   /**
    * Opens the specified URL for writing.
    */
-  virtual void open(QString url) = 0;
+  virtual void open(const QString& url) = 0;
 
   /**
    * Writes the specified map out. When this method is complete the output will likely be closed
    * and all data is guaranteed to be flushed.
    */
-  virtual void write(ConstOsmMapPtr map) = 0;
+  virtual void write(const ConstOsmMapPtr& map) = 0;
 
   /**
    * Lists supported data format extensions
@@ -69,6 +69,20 @@ public:
    * @return a formats string
    */
   virtual QString supportedFormats() = 0;
+
+  /**
+   * Sets flag indicating the writer is writing a debug map so that extra debugging metadata is
+   * included in the output
+   */
+  void setIsDebugMap(const bool is_debug = false) { _debug = is_debug; }
+  /**
+   * Gets flag indicating the writer is writing a debug map so that extra debugging metadata can
+   * be included in each implementation of the output formats
+   */
+  bool getIsDebugMap() { return _debug; }
+
+private:
+  bool _debug;
 };
 
 }

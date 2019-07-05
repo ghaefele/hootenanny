@@ -22,7 +22,7 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 
 #include <hoot/core/elements/OsmMap.h>
@@ -50,9 +50,10 @@ class OsmPgCsvWriterTest : public HootTestFixture
 public:
 
   OsmPgCsvWriterTest()
+    : HootTestFixture("test-files/io/PgCsvWriter/",
+                      "test-output/io/PgCsvWriter/")
   {
     setResetType(ResetBasic);
-    TestUtils::mkpath("test-output/io/PgCsvWriter");
   }
 
   void runBasic()
@@ -63,21 +64,21 @@ public:
     reader.read("test-files/ScoreMatchRef1.osm", map);
 
     OsmPgCsvWriter writer;
-    writer.open("test-output/io/PgCsvWriter/runBasic.pgcsv");
+    writer.open(_outputPath + "runBasic.pgcsv");
     writer.write(map);
     writer.close();
 
     //  Check the results
-    HOOT_FILE_EQUALS(QString("test-files/io/PgCsvWriter/runBasic-nodes.pgcsv"),
-                     QString("test-output/io/PgCsvWriter/runBasic-nodes.pgcsv"));
-    HOOT_FILE_EQUALS(QString("test-files/io/PgCsvWriter/runBasic-ways.pgcsv"),
-                     QString("test-output/io/PgCsvWriter/runBasic-ways.pgcsv"));
-    HOOT_FILE_EQUALS(QString("test-files/io/PgCsvWriter/runBasic-waynodes.pgcsv"),
-                     QString("test-output/io/PgCsvWriter/runBasic-waynodes.pgcsv"));
-    HOOT_FILE_EQUALS(QString("test-files/io/PgCsvWriter/runBasic-relations.pgcsv"),
-                     QString("test-output/io/PgCsvWriter/runBasic-relations.pgcsv"));
-    HOOT_FILE_EQUALS(QString("test-files/io/PgCsvWriter/runBasic-relationmembers.pgcsv"),
-                     QString("test-output/io/PgCsvWriter/runBasic-relationmembers.pgcsv"));
+    HOOT_FILE_EQUALS( _inputPath + "runBasic-nodes.pgcsv",
+                     _outputPath + "runBasic-nodes.pgcsv");
+    HOOT_FILE_EQUALS( _inputPath + "runBasic-ways.pgcsv",
+                     _outputPath + "runBasic-ways.pgcsv");
+    HOOT_FILE_EQUALS( _inputPath + "runBasic-waynodes.pgcsv",
+                     _outputPath + "runBasic-waynodes.pgcsv");
+    HOOT_FILE_EQUALS( _inputPath + "runBasic-relations.pgcsv",
+                     _outputPath + "runBasic-relations.pgcsv");
+    HOOT_FILE_EQUALS( _inputPath + "runBasic-relationmembers.pgcsv",
+                     _outputPath + "runBasic-relationmembers.pgcsv");
   }
 
   void runString()
@@ -154,7 +155,7 @@ public:
       "-1,38.8908235807431026,-104.7571019546465294,0,t,,0,\n"
       "\n"
       "way_id,changeset_id,timestamp,version,visible,tags\n"
-      "-7,0,,0,t,note=>2,highway=>primary\n"
+      "-7,0,,0,t,highway=>primary,note=>2\n"
       "-6,0,,0,t,highway=>unclassified\n"
       "-5,0,,0,t,highway=>primary\n"
       "-4,0,,0,t,highway=>unclassified\n"
@@ -208,7 +209,7 @@ public:
       "-1,0.0000000000000000,0.0000000000000000,0,t,,0,\n"
       "\n"
       "way_id,changeset_id,timestamp,version,visible,tags\n"
-      "-1,0,,0,t,note=>\"<2>\",full_name=>\"\\\"Hacksaw\\\" Jim Duggan\",\"first name\"=>\"first name goes here\",aerialway=>\"t-bar\"\n"
+      "-1,0,,0,t,note=>\"<2>\",\"first name\"=>\"first name goes here\",aerialway=>\"t-bar\",full_name=>\"\\\"Hacksaw\\\" Jim Duggan\"\n"
       "\n"
       "way_id,node_id,version,sequence_id\n"
       "-1,-1,0,1\n"

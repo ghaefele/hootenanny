@@ -22,17 +22,16 @@
  * This will properly maintain the copyright information. DigitalGlobe
  * copyrights will be updated automatically.
  *
- * @copyright Copyright (C) 2015, 2017, 2018 DigitalGlobe (http://www.digitalglobe.com/)
+ * @copyright Copyright (C) 2015, 2017, 2018, 2019 DigitalGlobe (http://www.digitalglobe.com/)
  */
 #ifndef __WAY_DISCRETIZER_H__
 #define __WAY_DISCRETIZER_H__
 
-// Boost
-#include <tgs/SharedPtr.h>
-
 // GEOS
-namespace geos {
-  namespace geom {
+namespace geos
+{
+  namespace geom
+  {
     class Coordinate;
   }
 }
@@ -42,6 +41,7 @@ namespace geos {
 #include <hoot/core/util/Units.h>
 
 // Standard
+#include <memory>
 #include <vector>
 
 // Tgs
@@ -56,7 +56,7 @@ class WayDiscretizer
 {
 public:
 
-  WayDiscretizer(const ConstOsmMapPtr& map, boost::shared_ptr<const hoot::Way> way);
+  WayDiscretizer(const ConstOsmMapPtr& map, const std::shared_ptr<const hoot::Way>& way);
 
   /**
    * Given an input way, discretize the way out into discrete coordinates. The first and last nodes
@@ -82,8 +82,9 @@ public:
   geos::geom::Coordinate interpolate(double d);
 
 protected:
+
   ConstOsmMapPtr _map;
-  boost::shared_ptr<const hoot::Way> _way;
+  std::shared_ptr<const hoot::Way> _way;
   // The distance from the beginning of the way to each node that makes up the way.
   std::vector<double> _lengthNodes;
 };

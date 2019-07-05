@@ -3,8 +3,8 @@ set -e
 
 # Test the GGDMv30 Translation
 
-inputDir=test-files/GGDMv30
-outputDir=test-output/ggdm30_translation
+inputDir=test-files/cmd/slow/GGDMv30
+outputDir=test-output/cmd/slow/ggdm30_translation
 
 TRANS=$HOOT_HOME/translations/GGDMv30.js
 
@@ -12,7 +12,7 @@ mkdir -p $outputDir
 rm -rf $outputDir/*
 
 # Normal Hoot options
-HOOT_OPT="--warn"
+HOOT_OPT="-C Testing.conf --warn"
 
 # Hoot options for debugging the test input and output
 # NOTE: This will generate HEAPS of output.
@@ -42,7 +42,7 @@ hoot diff --ignore-uuid $outputDir/new_GGDMv30.osm $inputDir/GGDMv30.osm # || di
 
 # Make shapefiles from the new OSM file
 # NOTE: This assumes that outputDir does not have any shapefiles in it!
-hoot convert --debug $outputDir/new_GGDMv30.osm $outputDir".shp" --trans $TRANS # > tmp/GGDM30_to_GGDM.txt
+hoot convert --debug -C Testing.conf $outputDir/new_GGDMv30.osm $outputDir".shp" --trans $TRANS # > tmp/GGDM30_to_GGDM.txt
 
 ##### This set of tests: comparing the individual shapefiles works!
 # Make individual shapefiles from the new OSM file
